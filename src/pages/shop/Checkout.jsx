@@ -17,6 +17,14 @@ const Checkout = () => {
   const { user } = useSelector(state => state.auth);
   const shippingFee = 2;
 
+  const isAdmin = user?.role === 'admin';
+
+  useEffect(() => {
+    if (isAdmin) {
+      setWilayat('محل');
+    }
+  }, [isAdmin]);
+
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     setCustomerPhone(value);
@@ -32,8 +40,15 @@ const Checkout = () => {
         throw new Error("لا توجد منتجات في السلة");
       }
 
-      if (!customerName || !customerPhone || !wilayat) {
-        throw new Error("الرجاء إدخال جميع المعلومات المطلوبة");
+      // التحقق من البيانات المطلوبة يختلف حسب صلاحية المستخدم
+      if (!isAdmin) {
+        if (!customerName || !customerPhone || !wilayat) {
+          throw new Error("الرجاء إدخال جميع المعلومات المطلوبة");
+        }
+      } else {
+        if (!wilayat) {
+          throw new Error("حقل الولاية مطلوب");
+        }
       }
 
       const orderData = {
@@ -48,10 +63,11 @@ const Checkout = () => {
         customerName,
         customerPhone,
         wilayat,
-        email: user?.email || 'no-email-provided@example.com', // Default email if not provided
+        email: user?.email || 'no-email-provided@example.com',
         notes,
         amount: totalPrice + shippingFee,
-        shippingFee
+        shippingFee,
+        isAdmin: isAdmin // إرسال معلومات صلاحية المستخدم للخادم
       };
 
       const response = await fetch(`${getBaseUrl()}/api/orders/create-order`, {
@@ -68,10 +84,7 @@ const Checkout = () => {
       }
 
       const data = await response.json();
-      
-      // تفريغ السلة قبل الانتقال
       dispatch(clearCart());
-
       navigate('/success', {
         state: {
           order: data.order,
@@ -93,7 +106,6 @@ const Checkout = () => {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto flex flex-col md:flex-row gap-8">
-      {/* تفاصيل الفاتورة */}
       <div className="flex-1">
         <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-6">تفاصيل الطلب</h1>
         
@@ -101,41 +113,84 @@ const Checkout = () => {
         
         <form onSubmit={createOrder} className="space-y-4 md:space-y-6" dir="rtl">
           <div className="space-y-4">
+            {!isAdmin && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2">الاسم الكامل *</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    required={!isAdmin}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2">رقم الهاتف *</label>
+                  <input
+                    type="tel"
+                    className="w-full p-2 border rounded-md"
+                    value={customerPhone}
+                    onChange={handlePhoneChange}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    minLength="8"
+                    maxLength="15"
+                    required={!isAdmin}
+                  />
+                </div>
+              </>
+            )}
+
+            {isAdmin && (
+              <>
+                <div>
+                  <label className="block text-gray-700 mb-2">الاسم الكامل (اختياري)</label>
+                  <input
+                    type="text"
+                    className="w-full p-2 border rounded-md"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-gray-700 mb-2">رقم الهاتف (اختياري)</label>
+                  <input
+                    type="tel"
+                    className="w-full p-2 border rounded-md"
+                    value={customerPhone}
+                    onChange={handlePhoneChange}
+                    pattern="[0-9]*"
+                    inputMode="numeric"
+                    minLength="8"
+                    maxLength="15"
+                  />
+                </div>
+              </>
+            )}
+
             <div>
-              <label className="block text-gray-700 mb-2">الاسم الكامل *</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2">رقم الهاتف *</label>
-              <input
-                type="tel"
-                className="w-full p-2 border rounded-md"
-                value={customerPhone}
-                onChange={handlePhoneChange}
-                pattern="[0-9]*"
-                inputMode="numeric"
-                minLength="8"
-                maxLength="15"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-700 mb-2">الولاية *</label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-md"
-                value={wilayat}
-                onChange={(e) => setWilayat(e.target.value)}
-                required
-              />
+              <label className="block text-gray-700 mb-2">
+                {isAdmin ? 'المكان *' : 'الولاية *'}
+              </label>
+              {isAdmin ? (
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-md bg-gray-100"
+                  value={wilayat}
+                  readOnly
+                />
+              ) : (
+                <input
+                  type="text"
+                  className="w-full p-2 border rounded-md"
+                  value={wilayat}
+                  onChange={(e) => setWilayat(e.target.value)}
+                  required
+                />
+              )}
             </div>
 
             <div>
@@ -159,7 +214,6 @@ const Checkout = () => {
         </form>
       </div>
 
-      {/* تفاصيل الطلب */}
       <div className="w-full md:w-1/3 p-4 md:p-6 bg-white rounded-lg shadow-lg border border-gray-200">
         <h2 className="text-lg md:text-xl font-bold mb-4 text-gray-800">ملخص الطلب</h2>
         <div className="space-y-4">

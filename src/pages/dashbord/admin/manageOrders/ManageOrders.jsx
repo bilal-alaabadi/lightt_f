@@ -3,7 +3,7 @@ import { useDeleteOrderMutation, useGetAllOrdersQuery } from '../../../../redux/
 import { formatDate } from '../../../../utils/formateDate';
 import UpdateOrderModal from './UpdateOrderModal';
 import html2pdf from 'html2pdf.js';
-
+import { FaStore } from 'react-icons/fa';
 const ManageOrders = () => {
     const { data: orders, error, isLoading, refetch } = useGetAllOrdersQuery();
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -98,7 +98,16 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                             orders.map((order, index) => (
                                 <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
                                     <td className='py-3 px-2 md:px-4 border-b'>{order?.orderId || '--'}</td>
-                                    <td className='py-3 px-2 md:px-4 border-b'>{order?.customerName || order?.email || 'غير محدد'}</td>
+                                    <td className='py-3 px-2 md:px-4 border-b'>
+                                        {order?.wilayat === 'محل' ? (
+<span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm flex items-center gap-1">
+    <FaStore className="text-green-600" />
+    محل
+</span>
+                                        ) : (
+                                            order?.customerName || order?.email || 'غير محدد'
+                                        )}
+                                    </td>
                                     <td className='py-3 px-2 md:px-4 border-b'>{formatDate(order?.updatedAt)}</td>
                                     <td className='py-3 px-2 md:px-4 border-b'>
                                         <div className="flex flex-wrap gap-2 justify-end">

@@ -1,43 +1,93 @@
-import React, { useState } from 'react'
-
-import productsData from "../../data/products.json"
-import ProductCards from '../shop/ProductCards';
+import React, { useState } from 'react';
+import { useSearchProductsQuery } from '../../redux/features/products/productsApi';
+import { Link } from 'react-router-dom';
 
 const Search = () => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [filteredProducts, setFilteredProducts] = useState(productsData);
+    const { data: products, isLoading, error } = useSearchProductsQuery(searchQuery, {
+        skip: searchQuery.length < 2
+    });
 
-    const handleSearch = () => {
-        const query = searchQuery.toLowerCase();
-
-        const filtered = productsData.filter(product => product.name.toLowerCase().includes(query) || product.description.toLowerCase().includes(query));
-
-        setFilteredProducts(filtered);
-    }
     return (
-        <>
-            <section className='section__container bg-primary-light'>
-                <h2 className='section__header capitalize'>Search Products</h2>
-                <p className='section__subheader'>Browse a diverse range of categories, from chic dresses to versatile accessories. Elevate your style today!</p>
+        <div className="container mx-auto px-4 py-8" dir="rtl">
+            {/* عنوان البحث */}
+            <section className="mb-12 text-center">
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                    اكتشف الأصالة بروح عصرية
+                </h2>
+                <p className="text-gray-600 max-w-2xl mx-auto">
+                    إكسسوارات وقطع مختارة بعناية، تعكس ذوقك الخاص وتمنحك إطلالة لا تشبه سواك.
+                </p>
             </section>
 
-            <section className='section__container'>
-                <div className='w-full mb-12 flex flex-col md:flex-row items-center justify-center gap-4'>
-                    <input type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className='search-bar w-full max-w-4xl p-2 border rounded'
-                    placeholder='Search for products...' />
-
-                    <button 
-                    onClick={handleSearch}
-                    className='search-button w-full md:w-auto py-2 px-8 bg-primary text-white rounded'>Search</button>
+            {/* شريط البحث */}
+            <section className="mb-8">
+                <div className="flex flex-col md:flex-row gap-4 max-w-4xl mx-auto">
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        placeholder="ابحث عن إكسسواراتك أو قطعك المميزة..."
+                    />
                 </div>
-
-                <ProductCards products={filteredProducts}/>
             </section>
-        </>
-    )
-}
 
-export default Search
+            {/* النتائج */}
+            <section>
+                {isLoading ? (
+                    <div className="text-center py-12">جاري البحث...</div>
+                ) : error ? (
+                    <div className="text-center py-12 text-red-500">حدث خطأ أثناء جلب النتائج</div>
+                ) : (
+                    <div className="bg-white rounded-lg shadow overflow-hidden">
+                        {products?.length > 0 ? (
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الصورة</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">الاسم</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">السعر</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">التفاصيل</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {products.map((product) => (
+                                        <tr key={product._id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <img
+                                                    src={product.image?.[0] || '/placeholder.jpg'}
+                                                    alt={product.name}
+                                                    className="h-16 w-16 object-cover rounded"
+                                                />
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {product.name}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {product.price} ر.س
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-primary hover:text-primary-dark">
+                                                <Link to={`/Shop/${product._id}`}>
+                                                    عرض التفاصيل
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <div className="text-center py-12 text-gray-500">
+                                {searchQuery.length > 1
+                                    ? 'لم نجد ما تبحث عنه، جرب كلمات أخرى.'
+                                    : 'ابدأ البحث بكتابة حرفين على الأقل'}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </section>
+        </div>
+    );
+};
+
+export default Search;

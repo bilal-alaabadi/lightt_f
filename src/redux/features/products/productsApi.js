@@ -114,14 +114,17 @@ const productsApi = createApi({
     }),
 
     searchProducts: builder.query({
-      query: (searchTerm) => `/search?q=${searchTerm}`,
+      query: (searchTerm) => ({
+        url: '/search',
+        params: { q: searchTerm }
+      }),
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ _id }) => ({ type: "Product", id: _id })),
-              "ProductList",
+              ...result.map(({ _id }) => ({ type: "Products", id: _id })),
+              { type: "Products", id: "LIST" },
             ]
-          : ["ProductList"],
+          : [{ type: "Products", id: "LIST" }],
     }),
   }),
 });

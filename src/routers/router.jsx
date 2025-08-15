@@ -1,5 +1,5 @@
 import { createBrowserRouter } from "react-router-dom";
-import App from "../App"
+import App from "../App";
 import Home from "../pages/home/Home";
 import CategoryPage from "../pages/category/CategoryPage";
 import Search from "../pages/search/Search";
@@ -23,96 +23,108 @@ import MangeUser from "../pages/dashbord/admin/users/MangeUser";
 import ManageOrders from "../pages/dashbord/admin/manageOrders/ManageOrders";
 import UpdateProduct from "../pages/dashbord/admin/manageProduct/UpdateProduct";
 import Checkout from "../pages/shop/Checkout";
-const router = createBrowserRouter([ 
+import Shop from "../pages/dashbord/admin/shop";
+import OrderConfirmation from "../pages/dashbord/admin/OrderConfirmation";
+
+const router = createBrowserRouter([
   {
     path: "/",
-    element:<App/>,
-    children:[
-      {path:"/",element:<Home/>},
-      {path:"/categories/:categoryName",element:<CategoryPage/>},
-      {path:"/search",element:<Search/>},
-      {path:"Shop",element:<ShopPage/>},
-      {path:"Shop/:id",element:<SingleProduct/>},
-      {
-        path:"/success",
-        element:<PaymentSuccess />
-      },
-      {
-        path:"/orders/:orderId",
-        element : <OrderDetails />
-      },
-      {
-        path:"/checkout",
-        element:<Checkout/>
-      }
-    ]
-  },
-  {path:"/login",element:<Login/>},
-  {path:"/register",element:<Register/>},
-  {
-    path: "/dashboard",
-    element: <PrivateRoute><DashboardLayout/></PrivateRoute>, // TODO: user private routes here
+    element: <App />,
     children: [
-      // user routes
-      { path: '', element: <UserDMain/> },
-      { path: 'orders', element: <UserOrders />  },
-      { path: 'payments', element: <UserPayments /> },
-      { path: 'profile', element: <UserProfile/> },
-      { path: 'reviews', element: <UserReviews /> },
-  
-      // admin routes
-      // Add admin-specific routes here in the same format
-      // admin routes (only accessible by admin) TODO: private routes with role field
+      { path: "", element: <Home /> },
+      { path: "categories/:categoryName", element: <CategoryPage /> },
+      {path:"/search",element:<Search/>},
+      { path: "Shop", element: <ShopPage /> },
+      { path: "Shop/:id", element: <SingleProduct /> },
+      { path: "success", element: <PaymentSuccess /> },
+      { path: "orders/:orderId", element: <OrderDetails /> },
+      { path: "checkout", element: <Checkout /> },
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
       {
-        path: "admin",
+        path: "dashboard",
         element: (
-          <PrivateRoute role="admin">
-            <AdminDMain/>
+          <PrivateRoute>
+            <DashboardLayout />
           </PrivateRoute>
         ),
-      },
-      {
-        path: "add-product",
-        element: (
-          <PrivateRoute role="admin">
-            <AddProduct />
-          </PrivateRoute>
-        ),
-      },
-      {
-        path: "manage-products",
-        element: (
-          <PrivateRoute role="admin">
-            <MangeProduct />
-          </PrivateRoute>
-        ),
-      },
-      {
-        path: "update-product/:id",
-        element: (
-          <PrivateRoute role="admin">
-            < UpdateProduct/>
-          </PrivateRoute>
-        ),
-      },
-      {
-        path: "users",
-        element: (
-          <PrivateRoute role="admin">
-            <MangeUser />
-          </PrivateRoute>
-        ),
-      },
-      {
-        path: "manage-orders",
-        element: (
-          <PrivateRoute role="admin">
-            <ManageOrders />
-          </PrivateRoute>
-        ),
+        children: [
+          // user routes
+          { path: "", element: <UserDMain /> },
+          { path: "orders", element: <UserOrders /> },
+          { path: "payments", element: <UserPayments /> },
+          { path: "profile", element: <UserProfile /> },
+          { path: "reviews", element: <UserReviews /> },
+
+          // admin routes
+          {
+            path: "admin",
+            element: (
+              <PrivateRoute role="admin">
+                <AdminDMain />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "add-product",
+            element: (
+              <PrivateRoute role="admin">
+                <AddProduct />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "manage-products",
+            element: (
+              <PrivateRoute role="admin">
+                <MangeProduct />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "update-product/:id",
+            element: (
+              <PrivateRoute role="admin">
+                <UpdateProduct />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "users",
+            element: (
+              <PrivateRoute role="admin">
+                <MangeUser />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "manage-orders",
+            element: (
+              <PrivateRoute role="admin">
+                <ManageOrders />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "manage-shop",
+            element: (
+              <PrivateRoute role="admin">
+                <Shop />
+              </PrivateRoute>
+            ),
+          },
+          {
+            path: "order-confirmation", // تم تغيير المسار إلى نسبي
+            element: (
+              <PrivateRoute role="admin">
+                <OrderConfirmation />
+              </PrivateRoute>
+            ),
+          },
+        ],
       },
     ],
-  }  
+  },
 ]);
 
 export default router;

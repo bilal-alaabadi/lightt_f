@@ -10,6 +10,8 @@ const navItems = [
     { path: '/dashboard/manage-products', label: 'تعديل المنتجات' },
     { path: '/dashboard/users', label: 'المستخدمون'  },
     { path: '/dashboard/manage-orders', label: 'أدارة الطلبات'  },
+    // { path: '/dashboard/manage-shop', label: 'Shop '  },
+    // { path: '/dashboard/order-confirmation', label: 'confirmation '  },
 ]
 const AdminDashboard = () => {
     const [logoutUser] = useLogoutUserMutation();
