@@ -23,8 +23,6 @@ import MangeUser from "../pages/dashbord/admin/users/MangeUser";
 import ManageOrders from "../pages/dashbord/admin/manageOrders/ManageOrders";
 import UpdateProduct from "../pages/dashbord/admin/manageProduct/UpdateProduct";
 import Checkout from "../pages/shop/Checkout";
-import Shop from "../pages/dashbord/admin/shop";
-import OrderConfirmation from "../pages/dashbord/admin/OrderConfirmation";
 
 const router = createBrowserRouter([
   {
@@ -104,23 +102,7 @@ const router = createBrowserRouter([
                 <ManageOrders />
               </PrivateRoute>
             ),
-          },
-          {
-            path: "manage-shop",
-            element: (
-              <PrivateRoute role="admin">
-                <Shop />
-              </PrivateRoute>
-            ),
-          },
-          {
-            path: "order-confirmation", // تم تغيير المسار إلى نسبي
-            element: (
-              <PrivateRoute role="admin">
-                <OrderConfirmation />
-              </PrivateRoute>
-            ),
-          },
+          }
         ],
       },
     ],
