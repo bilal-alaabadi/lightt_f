@@ -14,6 +14,12 @@ const categories = [
     { label: 'بوكسات الشهر', value: 'بوكسات الشهر' },
     { label: 'أقمشة', value: 'أقمشة'},
     { label: 'مسباح', value: 'مسباح'},
+    { label: 'اكسسوارات', value: 'اكسسوارات'},
+    { label: 'كابات', value: 'كابات'},
+    { label: 'شنط رجالية', value: 'شنط رجالية'},
+    { label: 'شنط نسائية', value: 'شنط نسائية'},
+    { label: 'احذية', value: 'احذية'},
+    { label: 'عطورات', value: 'عطورات'},
 ];
 
 const genderTypes = [
@@ -21,6 +27,9 @@ const genderTypes = [
     { label: 'رجالي', value: 'رجالي' },
     { label: 'نسائي', value: 'نسائي' },
 ];
+
+// فئات تحتاج فلتر النوع
+const needsGender = (cat) => cat === 'نظارات' || cat === 'ساعات' || cat === 'احذية';
 
 const ShopPage = () => {
     const [searchParams] = useSearchParams();
@@ -45,10 +54,13 @@ const ShopPage = () => {
         }
     }, [urlCategory, urlGender]);
 
-    const { data: { products = [], totalPages, totalProducts } = {}, error, isLoading } = useFetchAllProductsQuery({
+    const { data: { products = [], totalPages = 1, totalProducts = 0 } = {}, error, isLoading } =
+      useFetchAllProductsQuery({
         category: filtersState.category === 'الكل' ? '' : filtersState.category,
-        gender: (filtersState.category === 'نظارات' || filtersState.category === 'ساعات') ? 
-               (filtersState.gender === 'الكل' ? '' : filtersState.gender) : '',
+        // تمرير الجندر عند نظارات/ساعات/احذية فقط
+        gender: needsGender(filtersState.category)
+          ? (filtersState.gender === 'الكل' ? '' : filtersState.gender)
+          : '',
         page: currentPage,
         limit: ProductsPerPage,
     });
@@ -67,8 +79,8 @@ const ShopPage = () => {
     if (isLoading) return <div className="text-center py-8">جاري التحميل...</div>;
     if (error) return <div className="text-center py-8 text-red-500">حدث خطأ أثناء تحميل المنتجات</div>;
 
-    const startProduct = (currentPage - 1) * ProductsPerPage + 1;
-    const endProduct = startProduct + products.length - 1;
+    // const startProduct = (currentPage - 1) * ProductsPerPage + 1;
+    // const endProduct = startProduct + products.length - 1;
 
     return (
         <>
@@ -93,14 +105,11 @@ const ShopPage = () => {
                             filtersState={filtersState}
                             setFiltersState={setFiltersState}
                             clearFilters={clearFilters}
+                            needsGender={needsGender}
                         />
                     </div>
 
                     <div className='flex-1'>
-                        {/* <h3 className='text-xl font-medium mb-4'>
-                            عرض المنتجات من {startProduct} إلى {endProduct} من أصل {totalProducts} منتج
-                        </h3>
-                         */}
                         {products.length > 0 ? (
                             <>
                                 <ProductCards products={products} />

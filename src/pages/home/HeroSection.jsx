@@ -8,6 +8,12 @@ import img5 from "../../assets/Asset 9.png";
 import img6 from "../../assets/Asset 11.png";
 import img7 from "../../assets/Asset 13.png";
 import img8 from "../../assets/لايت1_1.png";
+import img9 from "../../assets/8646.png";
+import img10 from "../../assets/82522.png";
+import img11 from "../../assets/864646.png";
+import img12 from "../../assets/8131464.png";
+import img13 from "../../assets/8646463g.png";
+import img14 from "../../assets/8646546.png";
 
 const cards = [
   { id: 1, image: img1, trend: '', title: 'أقمشة' },
@@ -18,6 +24,12 @@ const cards = [
   { id: 6, image: img6, trend: '', title: 'اقلام' },
   { id: 7, image: img7, trend: '', title: 'مسباح' },
   { id: 8, image: img8, trend: '', title: 'بوكسات الشهر' },
+  { id: 9, image: img9, trend: '', title: 'اكسسوارات' },
+  { id: 10, image: img10, trend: '', title: 'كابات' },
+  { id: 11, image: img11, trend: '', title: 'شنط رجالية' },
+  { id: 12, image: img12, trend: '', title: 'شنط نسائية' },
+  { id: 13, image: img13, trend: '', title: 'احذية' },
+  { id: 14, image: img14, trend: '', title: 'عطورات' },
 ];
 
 const HeroSection = () => {

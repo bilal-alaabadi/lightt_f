@@ -9,39 +9,23 @@ const productsApi = createApi({
   }),
   tagTypes: ["Product", "ProductList"],
   endpoints: (builder) => ({
+    // جلب قائمة المنتجات (يدعم: category, gender, page, limit)
     fetchAllProducts: builder.query({
-      query: ({
-        category,
-        gender,
-        minPrice,
-        maxPrice,
-        search,
-        sort = "createdAt:desc",
-        page = 1,
-        limit = 10,
-      }) => {
-        const params = {
-          page: page.toString(),
-          limit: limit.toString(),
-          sort,
-        };
-
-        if (category && category !== "الكل") params.category = category;
-        if (gender) params.gender = gender;
-        if (minPrice) params.minPrice = minPrice;
-        if (maxPrice) params.maxPrice = maxPrice;
-        if (search) params.search = search;
-
-        const queryParams = new URLSearchParams(params).toString();
-        return `/?${queryParams}`;
+      query: ({ category, gender, page = 1, limit = 10 } = {}) => {
+        const params = new URLSearchParams();
+        params.set("page", String(page));
+        params.set("limit", String(limit));
+        if (category && category !== "الكل") params.set("category", category);
+        if (gender && gender !== "الكل") params.set("gender", gender);
+        return `/?${params.toString()}`;
       },
       transformResponse: (response) => ({
-        products: response.products,
-        totalPages: response.totalPages,
-        totalProducts: response.totalProducts,
+        products: Array.isArray(response?.products) ? response.products : [],
+        totalPages: Number(response?.totalPages) || 0,
+        totalProducts: Number(response?.totalProducts) || 0,
       }),
       providesTags: (result) =>
-        result
+        result?.products
           ? [
               ...result.products.map(({ _id }) => ({ type: "Product", id: _id })),
               "ProductList",
@@ -49,11 +33,33 @@ const productsApi = createApi({
           : ["ProductList"],
     }),
 
+    // جلب منتج واحد
     fetchProductById: builder.query({
       query: (id) => `/${id}`,
+      transformResponse: (response) => {
+        const product = response?.product || {};
+        // ضمان وجود الحقول الرقمية
+        return {
+          ...response,
+          product: {
+            ...product,
+            price: Number(product?.price) || 0,
+            oldPrice:
+              product?.oldPrice === null || product?.oldPrice === undefined
+                ? null
+                : Number(product?.oldPrice),
+            originalPrice:
+              product?.originalPrice === null || product?.originalPrice === undefined
+                ? null
+                : Number(product?.originalPrice),
+            quantity: Number(product?.quantity) || 0,
+          },
+        };
+      },
       providesTags: (result, error, id) => [{ type: "Product", id }],
     }),
 
+    // إنشاء منتج جديد (JSON)
     addProduct: builder.mutation({
       query: (newProduct) => ({
         url: "/create-product",
@@ -64,19 +70,12 @@ const productsApi = createApi({
       invalidatesTags: ["ProductList"],
     }),
 
-    fetchRelatedProducts: builder.query({
-      query: (id) => `/related/${id}`,
-      providesTags: (result, error, id) => [
-        { type: "Product", id },
-        "ProductList",
-      ],
-    }),
-
-     updateProduct: builder.mutation({
+    // تحديث منتج (يدعم FormData للتعامل مع الصورة)
+    updateProduct: builder.mutation({
       query: ({ id, body }) => ({
         url: `/update-product/${id}`,
         method: "PATCH",
-        body,
+        body, // يمكن أن يكون FormData أو JSON
         credentials: "include",
       }),
       invalidatesTags: (result, error, { id }) => [
@@ -85,15 +84,14 @@ const productsApi = createApi({
       ],
     }),
 
+    // تحديث الكمية فقط (هيدر خاص)
     updateProductQuantity: builder.mutation({
       query: ({ id, quantity }) => ({
         url: `/update-product/${id}`,
         method: "PATCH",
         body: { quantity },
         credentials: "include",
-        headers: {
-          'X-Quantity-Only': 'true'
-        }
+        headers: { "X-Quantity-Only": "true" },
       }),
       invalidatesTags: (result, error, { id }) => [
         { type: "Product", id },
@@ -101,6 +99,7 @@ const productsApi = createApi({
       ],
     }),
 
+    // حذف منتج
     deleteProduct: builder.mutation({
       query: (id) => ({
         url: `/${id}`,
@@ -113,32 +112,42 @@ const productsApi = createApi({
       ],
     }),
 
+    // البحث عن منتجات
     searchProducts: builder.query({
       query: (searchTerm) => ({
-        url: '/search',
-        params: { q: searchTerm }
+        url: "/search",
+        params: { q: searchTerm },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ _id }) => ({ type: "Products", id: _id })),
-              { type: "Products", id: "LIST" },
-            ]
-          : [{ type: "Products", id: "LIST" }],
+      transformResponse: (response) =>
+        Array.isArray(response)
+          ? response.map((p) => ({
+              ...p,
+              price: Number(p?.price) || 0,
+              oldPrice:
+                p?.oldPrice === null || p?.oldPrice === undefined
+                  ? null
+                  : Number(p?.oldPrice),
+              originalPrice:
+                p?.originalPrice === null || p?.originalPrice === undefined
+                  ? null
+                  : Number(p?.originalPrice),
+              quantity: Number(p?.quantity) || 0,
+            }))
+          : [],
+      providesTags: ["ProductList"],
     }),
   }),
 });
 
 export const {
   useFetchAllProductsQuery,
-  useLazyFetchAllProductsQuery,
   useFetchProductByIdQuery,
   useAddProductMutation,
   useUpdateProductMutation,
   useUpdateProductQuantityMutation,
   useDeleteProductMutation,
-  useFetchRelatedProductsQuery,
   useSearchProductsQuery,
+  useLazyFetchAllProductsQuery,
   useLazySearchProductsQuery,
 } = productsApi;
 

@@ -66,11 +66,11 @@ const Login = () => {
                 تسجيل الدخول
             </button>
         </form>
-
+{/* 
         <p className='my-5 italic text-sm text-center'>
             ليس لديك حساب؟ 
             <Link to="/register" className='text-red-700 px-1 underline'>سجل هنا</Link>.
-        </p>
+        </p> */}
     </div>
 </section>
     )
