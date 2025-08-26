@@ -1,13 +1,17 @@
+// ========================= ShopFiltering.jsx =========================
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaMale, FaFemale } from 'react-icons/fa';
 
 const ShopFiltering = ({ categories, genderTypes, filtersState, setFiltersState, clearFilters }) => {
   const navigate = useNavigate();
+
+  // ✅ تشمل "محافظ"
   const showGenderFilter =
     filtersState.category === 'نظارات' ||
     filtersState.category === 'ساعات' ||
-    filtersState.category === 'احذية';
+    filtersState.category === 'احذية' ||
+    filtersState.category === 'محافظ';
 
   const handleFilterChange = (name, value) => {
     const newFilters = {
@@ -22,15 +26,17 @@ const ShopFiltering = ({ categories, genderTypes, filtersState, setFiltersState,
 
     setFiltersState(newFilters);
 
-    // تحديث URL مع معايير الفلترة
+    // تحديث URL
     const params = new URLSearchParams();
     if (newFilters.category !== 'الكل') params.set('category', newFilters.category);
-    if (
-      (newFilters.category === 'نظارات' ||
-        newFilters.category === 'ساعات' ||
-        newFilters.category === 'احذية') &&
-      newFilters.gender !== 'الكل'
-    ) {
+
+    const needsGender =
+      newFilters.category === 'نظارات' ||
+      newFilters.category === 'ساعات' ||
+      newFilters.category === 'احذية' ||
+      newFilters.category === 'محافظ';
+
+    if (needsGender && newFilters.gender !== 'الكل') {
       params.set('gender', newFilters.gender);
     }
 
@@ -65,7 +71,7 @@ const ShopFiltering = ({ categories, genderTypes, filtersState, setFiltersState,
         </div>
       </div>
 
-      {/* النوع (عند اختيار نظارات/ساعات/احذية) */}
+      {/* النوع */}
       {showGenderFilter && (
         <div className="flex flex-col space-y-2">
           <h4 className="font-medium">النوع</h4>
@@ -81,7 +87,6 @@ const ShopFiltering = ({ categories, genderTypes, filtersState, setFiltersState,
                   onChange={(e) => handleFilterChange('gender', e.target.value)}
                   className="mr-2"
                 />
-                {/* أيقونات بجانب الخيارات */}
                 {type.value === 'رجالي' && (
                   <FaMale size={20} className="ml-2" aria-label="رجالي" />
                 )}

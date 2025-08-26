@@ -74,6 +74,11 @@ const AdminDMain = () => {
       .reduce((acc, o) => acc + orderProfit(o), 0);
   }, [orders]);
 
+  // إجمالي الأرباح (المحل + المتجر الإلكتروني)
+  const totalProfit = useMemo(() => {
+    return (storeProfit || 0) + (shopProfitWithoutShipping || 0);
+  }, [storeProfit, shopProfitWithoutShipping]);
+
   const profitClass = (v, base) =>
     (v > 0 ? `${base} text-green-700` : v < 0 ? `${base} text-red-700` : `${base} text-gray-700`);
 
@@ -162,6 +167,22 @@ const AdminDMain = () => {
           <div className={profitClass(shopProfitWithoutShipping, "text-3xl font-extrabold")}>
             {fmt(shopProfitWithoutShipping)}
           </div>
+        </div>
+
+        {/* إجمالي الأرباح (مربع جديد) */}
+        <div
+          className="bg-white shadow-md rounded-lg p-5 border border-gray-200"
+          role="region"
+          aria-label="إجمالي الأرباح"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-lg font-semibold">إجمالي الأرباح (محل + متجر)</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+              مجموع
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mb-3">المجموع = أرباح المحل + أرباح المتجر الإلكتروني</p>
+          <div className={profitClass(totalProfit, "text-3xl font-extrabold")}>{fmt(totalProfit)}</div>
         </div>
       </div>
 

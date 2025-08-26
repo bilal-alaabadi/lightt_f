@@ -1,3 +1,4 @@
+// ========================= UpdateProduct.jsx =========================
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useFetchProductByIdQuery, useUpdateProductMutation, useUpdateProductQuantityMutation } from '../../../../redux/features/products/productsApi';
@@ -29,8 +30,8 @@ const genderTypes = [
   { label: 'نسائي', value: 'نسائي' },
 ];
 
-// الفئات التي تتطلب حقل النوع
-const GENDER_REQUIRED_CATEGORIES = new Set(['نظارات', 'ساعات', 'احذية']);
+// ✅ أضفنا "محافظ" هنا
+const GENDER_REQUIRED_CATEGORIES = new Set(['نظارات', 'ساعات', 'احذية', 'محافظ']);
 
 const UpdateProduct = () => {
   const { id } = useParams();

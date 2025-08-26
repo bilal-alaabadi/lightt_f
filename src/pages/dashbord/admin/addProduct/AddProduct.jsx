@@ -1,3 +1,4 @@
+// ========================= AddProduct.jsx =========================
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import TextInput from './TextInput';
@@ -20,7 +21,7 @@ const categories = [
   { label: 'كابات', value: 'كابات' },
   { label: 'شنط رجالية', value: 'شنط رجالية' },
   { label: 'شنط نسائية', value: 'شنط نسائية' },
-  { label: 'احذية', value: 'احذية' },           // ← موجودة
+  { label: 'احذية', value: 'احذية' },
   { label: 'عطورات', value: 'عطورات' },
 ];
 
@@ -30,8 +31,8 @@ const genderTypes = [
   { label: 'نسائي', value: 'نسائي' },
 ];
 
-// الفئات التي تتطلب تحديد النوع (Gender)
-const GENDER_REQUIRED_CATEGORIES = new Set(['نظارات', 'ساعات', 'احذية']);
+// ✅ أضفنا "محافظ"
+const GENDER_REQUIRED_CATEGORIES = new Set(['نظارات', 'ساعات', 'احذية', 'محافظ']);
 
 const AddProduct = () => {
   const { user } = useSelector((state) => state.auth);
@@ -41,7 +42,7 @@ const AddProduct = () => {
     category: '',
     price: '',
     oldPrice: '',
-    originalPrice: '', // السعر الأصلي (اختياري)
+    originalPrice: '',
     description: '',
     gender: '',
     quantity: 0,
@@ -56,7 +57,6 @@ const AddProduct = () => {
   useEffect(() => {
     const needGender = GENDER_REQUIRED_CATEGORIES.has(product.category);
     setShowGenderField(needGender);
-
     if (!needGender) {
       setProduct((prev) => ({ ...prev, gender: '' }));
     }
@@ -82,7 +82,6 @@ const AddProduct = () => {
       quantity: product.quantity !== '',
     };
 
-    // إلزام النوع للفئات المحددة (يشمل "احذية")
     if (GENDER_REQUIRED_CATEGORIES.has(product.category)) {
       if (!product.gender) {
         alert('الرجاء اختيار نوع المنتج (رجالي/نسائي)');

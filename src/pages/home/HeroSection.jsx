@@ -1,3 +1,4 @@
+// ========================= HeroSection.jsx =========================
 import React from 'react';
 import { Link } from 'react-router-dom';
 import img1 from "../../assets/لايت1.png";
@@ -14,6 +15,9 @@ import img11 from "../../assets/864646.png";
 import img12 from "../../assets/8131464.png";
 import img13 from "../../assets/8646463g.png";
 import img14 from "../../assets/8646546.png";
+
+import female from "../../assets/female.png";
+import male from "../../assets/male.png";
 
 const cards = [
   { id: 1, image: img1, trend: '', title: 'أقمشة' },
@@ -33,34 +37,34 @@ const cards = [
 ];
 
 const HeroSection = () => {
-    return (
-        <section className='section__container grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4'>
-            {cards.map((card) => (
-                <Link 
-                    to={{
-                        pathname: "/shop",
-                        search: `?category=${encodeURIComponent(card.title)}`
-                    }}
-                    key={card.id}
-                    className='block aspect-square group'
-                >
-                    <div className='hero__card relative w-full h-full overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300'>
-                        <img 
-                            src={card.image} 
-                            alt={card.title} 
-                            className='absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105'
-                        />
-                        <div className='absolute inset-0 flex flex-col justify-end'>
-                            <div className='bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 text-white text-center'>
-                                <p className='text-xs sm:text-sm font-semibold text-gray-300'>{card.trend}</p>
-                                <h4 className='text-lg sm:text-xl font-bold mt-1'>{card.title}</h4>
-                            </div>
-                        </div>
-                    </div>
-                </Link>
-            ))}
-        </section>
-    );
+  return (
+    <section className='section__container grid grid-cols-2 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-4'>
+      {cards.map((card) => (
+        <Link
+          to={{
+            pathname: "/shop",
+            search: `?category=${encodeURIComponent(card.title)}`
+          }}
+          key={card.id}
+          className='block aspect-square group'
+        >
+          <div className='hero__card relative w-full h-full overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300'>
+            <img
+              src={card.image}
+              alt={card.title}
+              className='absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105'
+            />
+            <div className='absolute inset-0 flex flex-col justify-end'>
+              <div className='bg-gradient-to-t from-black/80 via-black/50 to-transparent p-4 text-white text-center'>
+                <p className='text-xs sm:text-sm font-semibold text-gray-300'>{card.trend}</p>
+                <h4 className='text-lg sm:text-xl font-bold mt-1'>{card.title}</h4>
+              </div>
+            </div>
+          </div>
+        </Link>
+      ))}
+    </section>
+  );
 };
 
 export default HeroSection;
