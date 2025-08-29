@@ -1,31 +1,28 @@
 // src/pages/dashbord/admin/dashboard/AdminDMain.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { useGetAdminStatsQuery } from '../../../../redux/features/stats/statsApi';
 import { useGetAllOrdersQuery } from '../../../../redux/features/orders/orderApi';
 import AdminStats from './AdminStats';
-import AdminStatsChart from './AdminStatsChart';
-import { FaStore } from 'react-icons/fa';
 
 const AdminDMain = () => {
   const { user } = useSelector((state) => state.auth);
-  const navigate = useNavigate();
+  const { data: orders, error, isLoading } = useGetAllOrdersQuery();
 
-  // API
-  const { data: stats, error: statsError, isLoading: statsLoading } = useGetAdminStatsQuery();
-  const { data: orders, error: ordersError, isLoading: ordersLoading } = useGetAllOrdersQuery();
+  // ====== فلتر الأيام للقسم السفلي ======
+  const [days, setDays] = useState('7'); // 7 | 30 | 90 | 'all'
 
-  // تنسيقات
-  const fmt = (n) =>
-    new Intl.NumberFormat('ar-OM', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      .format(Number(n) || 0) + ' ر.ع';
+  const filterByDays = useCallback((list, d) => {
+    if (!Array.isArray(list)) return [];
+    if (d === 'all') return list;
+    const now = Date.now();
+    const from = now - Number(d) * 24 * 60 * 60 * 1000;
+    return list.filter((o) => {
+      const t = new Date(o?.createdAt || o?.updatedAt || 0).getTime();
+      return t >= from && t <= now;
+    });
+  }, []);
 
-  // أرباح بدون الشحن (حسب منطقك السابق)
-  const earningsWithoutShipping =
-    (Number(stats?.totalEarnings) || 0) - ((Number(stats?.totalOrders) || 0) * 2);
-
-  // Helpers آمنة للمسارات المختلفة
+  // ====== Helpers للوصول الآمن للحقول ======
   const getOriginalPrice = (item) =>
     Number(
       item?.originalPrice ??
@@ -44,286 +41,337 @@ const AdminDMain = () => {
       0
     );
 
-  const getName = (item) =>
-    item?.name || item?.product?.name || item?.productDetails?.name || item?.productId?.name || 'منتج';
-
   const getQty = (item) => Number(item?.quantity ?? item?.qty ?? 0) || 0;
 
-  // ربح سطر
-  const lineProfit = (item) => (getSellPrice(item) - getOriginalPrice(item)) * getQty(item);
+  const lineRevenue = (item) => getSellPrice(item) * getQty(item); // قيمة السطر
+  const lineProfit  = (item) => (getSellPrice(item) - getOriginalPrice(item)) * getQty(item); // ربح السطر
 
-  // ربح الطلب
-  const orderProfit = (order) => {
-    if (!Array.isArray(order?.products)) return 0;
-    return order.products.reduce((sum, p) => sum + lineProfit(p), 0);
+  const orderAgg = (order) => {
+    if (!Array.isArray(order?.products)) return { revenue: 0, profit: 0 };
+    return order.products.reduce(
+      (acc, p) => ({
+        revenue: acc.revenue + lineRevenue(p),
+        profit:  acc.profit  + lineProfit(p),
+      }),
+      { revenue: 0, profit: 0 }
+    );
   };
 
-  // أرباح المحل
-  const storeProfit = useMemo(() => {
+  const fmt = (n) =>
+    new Intl.NumberFormat('ar-OM', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      .format(Number(n) || 0) + ' ر.ع';
+
+  const formatDate = (d) =>
+    new Date(d).toLocaleString('ar-OM', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
+  // ====== الستّة الرئيسية (محل / متجر) ======
+  const {
+    ordersAmountStore,
+    ordersAmountShop,
+    netProfitStore,
+    netProfitShop,
+  } = useMemo(() => {
     const list = Array.isArray(orders) ? orders : [];
-    return list
-      .filter(o => o?.wilayat === 'محل')
-      .reduce((acc, o) => acc + orderProfit(o), 0);
+
+    let _ordersAmountStore = 0;
+    let _ordersAmountShop  = 0;
+    let _netProfitStore    = 0;
+    let _netProfitShop     = 0;
+
+    for (const o of list) {
+      const { revenue, profit } = orderAgg(o);
+      const isStore = o?.wilayat === 'محل';
+      if (isStore) {
+        _ordersAmountStore += revenue;
+        _netProfitStore    += profit;
+      } else {
+        _ordersAmountShop  += revenue;
+        _netProfitShop     += profit;
+      }
+    }
+
+    return {
+      ordersAmountStore: _ordersAmountStore,
+      ordersAmountShop:  _ordersAmountShop,
+      netProfitStore:    _netProfitStore,
+      netProfitShop:     _netProfitShop,
+    };
   }, [orders]);
 
-  // أرباح المتجر (بدون الشحن)
-  const shopProfitWithoutShipping = useMemo(() => {
-    const list = Array.isArray(orders) ? orders : [];
-    return list
-      .filter(o => o?.wilayat !== 'محل')
-      .reduce((acc, o) => acc + orderProfit(o), 0);
-  }, [orders]);
+  const netProfitTotal    = useMemo(() => (netProfitStore + netProfitShop), [netProfitStore, netProfitShop]);
+  const ordersTotalAmount = useMemo(() => (ordersAmountStore + ordersAmountShop), [ordersAmountStore, ordersAmountShop]);
 
-  // إجمالي الأرباح (المحل + المتجر الإلكتروني)
-  const totalProfit = useMemo(() => {
-    return (storeProfit || 0) + (shopProfitWithoutShipping || 0);
-  }, [storeProfit, shopProfitWithoutShipping]);
+  // ====== تفاصيل الفترة (حسب days) + قائمة الطلبات لهذه الفترة ======
+  const { periodRevenueTotal, periodProfitTotal, periodOrders } = useMemo(() => {
+    const base = Array.isArray(orders) ? orders : [];
+    const filtered = filterByDays(base, days).slice().sort(
+      (a, b) => new Date(b.createdAt || b.updatedAt) - new Date(a.createdAt || a.updatedAt)
+    );
 
-  const profitClass = (v, base) =>
-    (v > 0 ? `${base} text-green-700` : v < 0 ? `${base} text-red-700` : `${base} text-gray-700`);
+    let rev = 0, prof = 0;
+    const enhanced = filtered.map((o) => {
+      const agg = orderAgg(o);
+      rev  += agg.revenue;
+      prof += agg.profit;
+      return { ...o, __revenue: agg.revenue, __profit: agg.profit };
+    });
 
-  // ------- تفاصيل المنتجات (سطر-بسطر) -------
-  // عناصر المحل
-  const storeLines = useMemo(() => {
-    const list = Array.isArray(orders) ? orders : [];
-    return list
-      .filter(o => o?.wilayat === 'محل')
-      .flatMap((o) => (Array.isArray(o.products) ? o.products : []).map((p, idx) => ({
-        key: `${o._id || 'order'}-${idx}`,
-        orderId: o?.orderId || '--',
-        name: getName(p),
-        qty: getQty(p),
-        price: getSellPrice(p),
-        originalPrice: getOriginalPrice(p),
-        profit: lineProfit(p),
-      })));
-  }, [orders]);
+    return {
+      periodRevenueTotal: rev,
+      periodProfitTotal:  prof,
+      periodOrders: enhanced,
+    };
+  }, [orders, days, filterByDays]);
 
-  // عناصر المتجر
-  const shopLines = useMemo(() => {
-    const list = Array.isArray(orders) ? orders : [];
-    return list
-      .filter(o => o?.wilayat !== 'محل')
-      .flatMap((o) => (Array.isArray(o.products) ? o.products : []).map((p, idx) => ({
-        key: `${o._id || 'order'}-${idx}`,
-        orderId: o?.orderId || '--',
-        name: getName(p),
-        qty: getQty(p),
-        price: getSellPrice(p),
-        originalPrice: getOriginalPrice(p),
-        profit: lineProfit(p),
-      })));
-  }, [orders]);
+  // ====== صفحة خفية (مودال) للتفاصيل ======
+  // type: 'profit' | 'revenue' | null
+  const [detailsType, setDetailsType] = useState(null);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
-  // حوارات التفاصيل
-  const [showStoreDetails, setShowStoreDetails] = useState(false);
-  const [showShopDetails, setShowShopDetails] = useState(false);
+  const openDetails = (type) => {
+    setDetailsType(type);
+    setExpandedOrderId(null);
+  };
+  const closeDetails = () => {
+    setDetailsType(null);
+    setExpandedOrderId(null);
+  };
 
   return (
     <div className="p-6" dir="rtl">
-      <h1 className="text-2xl font-semibold mb-4">لوحة تحكم المشرف</h1>
-      <p className="text-gray-500">{user?.username}! مرحبًا بك في لوحة تحكم الإدارة.</p>
+      <h1 className="text-2xl font-semibold mb-2">لوحة تحكم المشرف</h1>
+      <p className="text-gray-500 mb-4">{user?.username ? `${user.username}، أهلاً بك.` : 'مرحبًا بك.'}</p>
 
-      {(statsLoading || ordersLoading) && <div className="mb-4">جاري التحميل...</div>}
-      {(statsError || ordersError) && <div className="mb-4 text-red-600">فشل تحميل البيانات!</div>}
-      {!stats && !(statsLoading || ordersLoading) && <div className="mb-4">لم يتم العثور على أي إحصائيات</div>}
+      {isLoading && <div className="mb-4">جاري التحميل...</div>}
+      {error && <div className="mb-4 text-red-600">فشل تحميل البيانات!</div>}
 
-      {/* البطاقات: أرباح + تفاصيل */}
-      <div className="my-5 grid gap-4 md:grid-cols-2 grid-cols-1">
-        {/* أرباح المحل */}
-        <div
-          className="bg-white shadow-md rounded-lg p-5 border border-gray-200 cursor-pointer hover:shadow-lg transition"
-          onClick={() => navigate('/dashboard/manage-orders?type=store')}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold">أرباح المحل</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-              <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm inline-flex items-center gap-1">
-                <FaStore className="text-green-600" />
-                محل
-              </span>
-            </span>
+      {/* الستة الرئيسية */}
+      {!isLoading && !error && (
+        <AdminStats
+          stats={{
+            netProfitTotal,          // إجمالي صافي الربح
+            ordersTotalAmount,       // إجمالي الطلبات (قيمة فقط)
+            netProfitShop,           // صافي ربح المتجر
+            netProfitStore,          // صافي ربح المحل
+            ordersAmountShop,        // الطلبات من المتجر (قيمة)
+            ordersAmountStore,       // الطلبات من المحل (قيمة)
+          }}
+        />
+      )}
+
+      {/* ====== قسم التفاصيل مع فلتر الأيام ====== */}
+      {!isLoading && !error && (
+        <div className="mt-8 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">تفاصيل الطلبات حسب الفترة</h2>
+
+            <div className="flex items-center gap-2">
+              <label htmlFor="days" className="text-sm text-gray-600">المدة:</label>
+              <select
+                id="days"
+                value={days}
+                onChange={(e) => setDays(e.target.value)}
+                className="border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="7">آخر 7 أيام</option>
+                <option value="30">آخر 30 يومًا</option>
+                <option value="90">آخر 90 يومًا</option>
+                <option value="all">كل الفترات</option>
+              </select>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 mb-3">الصيغة: (price - originalPrice) × الكمية</p>
-          <div className={profitClass(storeProfit, "text-3xl font-extrabold")}>{fmt(storeProfit)}</div>
+
+          <div className="grid gap-4 md:grid-cols-2 grid-cols-1">
+            {/* 1) إجمالي صافي الربح (للفترة) - يفتح صفحة خفية */}
+            <button
+              type="button"
+              onClick={() => openDetails('profit')}
+              className="text-right bg-white shadow-md rounded-lg p-5 border border-gray-200 hover:shadow-lg transition cursor-pointer"
+              title="عرض تفاصيل الطلبات (صافي الربح)"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base md:text-lg font-semibold">إجمالي صافي الربح (للفترة)</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                  {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mb-3">(price - originalPrice) × الكمية</p>
+              <div className={`text-3xl font-extrabold ${
+                periodProfitTotal > 0 ? 'text-green-700' :
+                periodProfitTotal < 0 ? 'text-red-700' : 'text-gray-700'
+              }`}>
+                {fmt(periodProfitTotal)}
+              </div>
+            </button>
+
+            {/* 2) إجمالي الطلبات (قيمة فقط) (للفترة) - يفتح صفحة خفية */}
+            <button
+              type="button"
+              onClick={() => openDetails('revenue')}
+              className="text-right bg-white shadow-md rounded-lg p-5 border border-gray-200 hover:shadow-lg transition cursor-pointer"
+              title="عرض تفاصيل الطلبات (قيمة فقط)"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-base md:text-lg font-semibold">إجمالي الطلبات (قيمة فقط) (للفترة)</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                  {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mb-3">price × الكمية</p>
+              <div className="text-3xl font-extrabold text-gray-800">
+                {fmt(periodRevenueTotal)}
+              </div>
+            </button>
+          </div>
         </div>
+      )}
 
-        {/* أرباح المتجر */}
-        <div
-          className="bg-white shadow-md rounded-lg p-5 border border-gray-200 cursor-pointer hover:shadow-lg transition"
-          onClick={() => navigate('/dashboard/manage-orders?type=shop')}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold">أرباح المتجر (بدون الشحن)</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-              طلبات المتجر الاكتروني
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 mb-3">الصيغة: (price - originalPrice) × الكمية</p>
-          <div className={profitClass(shopProfitWithoutShipping, "text-3xl font-extrabold")}>
-            {fmt(shopProfitWithoutShipping)}
-          </div>
-        </div>
-
-        {/* إجمالي الأرباح (مربع جديد) */}
-        <div
-          className="bg-white shadow-md rounded-lg p-5 border border-gray-200"
-          role="region"
-          aria-label="إجمالي الأرباح"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold">إجمالي الأرباح (محل + متجر)</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
-              مجموع
-            </span>
-          </div>
-          <p className="text-sm text-gray-500 mb-3">المجموع = أرباح المحل + أرباح المتجر الإلكتروني</p>
-          <div className={profitClass(totalProfit, "text-3xl font-extrabold")}>{fmt(totalProfit)}</div>
-        </div>
-      </div>
-
-      {/* البطاقات الجديدة: تفاصيل المنتجات */}
-      <div className="my-5 grid gap-4 md:grid-cols-2 grid-cols-1">
-        {/* تفاصيل منتجات المحل */}
-        <div
-          className="bg-white shadow-md rounded-lg p-5 border border-gray-200 cursor-pointer hover:shadow-lg transition"
-          onClick={() => setShowStoreDetails(true)}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold">تفاصيل طلبات المحل</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-              {storeLines.length} عنصر
-            </span>
-          </div>
-          <p className="text-sm text-gray-500">عرض كل العناصر المطلوبة من المحل مع السعرين والربح.</p>
-        </div>
-
-        {/* تفاصيل منتجات المتجر */}
-        <div
-          className="bg-white shadow-md rounded-lg p-5 border border-gray-200 cursor-pointer hover:shadow-lg transition"
-          onClick={() => setShowShopDetails(true)}
-          role="button"
-          tabIndex={0}
-        >
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-semibold">تفاصيل طلبات المتجر</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-              {shopLines.length} عنصر
-            </span>
-          </div>
-          <p className="text-sm text-gray-500">عرض كل العناصر المطلوبة من المتجر مع السعرين والربح.</p>
-        </div>
-      </div>
-
-      {/* جداول التفاصيل - مودالات */}
-      {showStoreDetails && (
+      {/* ====== المودال (الصفحة الخفية) ====== */}
+      {detailsType && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto">
+          <div className="bg-white rounded-lg w-full max-w-6xl max-h-[92vh] overflow-auto" dir="rtl">
+            {/* رأس المودال */}
             <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">تفاصيل منتجات المحل</h3>
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {detailsType === 'profit' ? 'تفاصيل صافي الربح' : 'تفاصيل قيمة الطلبات'} — {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  اضغط على أي طلب لاستعراض أصناف الطلب (تفاصيل المنتجات).
+                </p>
+              </div>
               <button
-                onClick={() => setShowStoreDetails(false)}
+                onClick={closeDetails}
                 className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
               >
                 إغلاق
               </button>
             </div>
+
+            {/* ملخص أعلى */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <p className="text-sm text-gray-500 mb-1">إجمالي صافي الربح في الفترة</p>
+                <div className="text-2xl font-bold">{fmt(periodProfitTotal)}</div>
+              </div>
+              <div className="bg-gray-50 p-4 rounded-lg border">
+                <p className="text-sm text-gray-500 mb-1">إجمالي الطلبات (قيمة) في الفترة</p>
+                <div className="text-2xl font-bold">{fmt(periodRevenueTotal)}</div>
+              </div>
+            </div>
+
+            {/* جدول الطلبات */}
             <div className="p-4 overflow-x-auto">
-              {storeLines.length === 0 ? (
-                <div className="text-gray-500">لا توجد عناصر.</div>
+              {periodOrders.length === 0 ? (
+                <div className="text-gray-500 p-4">لا توجد طلبات ضمن الفترة المحددة.</div>
               ) : (
                 <table className="min-w-full bg-white border border-gray-200 rounded-lg">
                   <thead className="bg-gray-100">
                     <tr>
                       <th className="py-3 px-3 text-right">رقم الطلب</th>
-                      <th className="py-3 px-3 text-right">المنتج</th>
-                      <th className="py-3 px-3 text-right">الكمية</th>
-                      <th className="py-3 px-3 text-right">السعر الحالي</th>
-                      <th className="py-3 px-3 text-right">السعر الأصلي</th>
-                      <th className="py-3 px-3 text-right">ربح السطر</th>
+                      <th className="py-3 px-3 text-right">المصدر</th>
+                      <th className="py-3 px-3 text-right">التاريخ</th>
+                      <th className="py-3 px-3 text-right">قيمة الطلب</th>
+                      <th className="py-3 px-3 text-right">صافي ربح الطلب</th>
+                      <th className="py-3 px-3 text-right">تفاصيل</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {storeLines.map((row, i) => (
-                      <tr key={row.key} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
-                        <td className="py-2 px-3">{row.orderId}</td>
-                        <td className="py-2 px-3">{row.name}</td>
-                        <td className="py-2 px-3">{row.qty}</td>
-                        <td className="py-2 px-3">{fmt(row.price)}</td>
-                        <td className="py-2 px-3">{fmt(row.originalPrice)}</td>
-                        <td className={`py-2 px-3 ${row.profit > 0 ? 'text-green-700' : row.profit < 0 ? 'text-red-700' : 'text-gray-700'}`}>
-                          {fmt(row.profit)}
-                        </td>
-                      </tr>
-                    ))}
+                    {periodOrders.map((o, i) => {
+                      const oid = o._id || o.orderId || String(i);
+                      const expanded = expandedOrderId === oid;
+                      return (
+                        <React.Fragment key={oid}>
+                          <tr className={i % 2 === 0 ? 'bg-gray-50' : ''}>
+                            <td className="py-2 px-3">{o.orderId || '--'}</td>
+                            <td className="py-2 px-3">
+                              {o.wilayat === 'محل'
+                                ? <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">محل</span>
+                                : <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs">متجر</span>}
+                            </td>
+                            <td className="py-2 px-3">{formatDate(o.updatedAt || o.createdAt)}</td>
+                            <td className="py-2 px-3">{fmt(o.__revenue)}</td>
+                            <td className={`py-2 px-3 ${o.__profit > 0 ? 'text-green-700' : o.__profit < 0 ? 'text-red-700' : 'text-gray-700'}`}>
+                              {fmt(o.__profit)}
+                            </td>
+                            <td className="py-2 px-3">
+                              <button
+                                onClick={() => setExpandedOrderId(expanded ? null : oid)}
+                                className="text-sm text-indigo-600 hover:underline"
+                              >
+                                {expanded ? 'إخفاء' : 'عرض'}
+                              </button>
+                            </td>
+                          </tr>
+
+                          {/* صف التفاصيل (المنتجات) */}
+                          {expanded && Array.isArray(o.products) && (
+                            <tr>
+                              <td colSpan={6} className="p-0">
+                                <div className="p-3 bg-gray-50 border-t">
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full bg-white border border-gray-200 rounded">
+                                      <thead className="bg-gray-100">
+                                        <tr>
+                                          <th className="py-2 px-2 text-right">#</th>
+                                          <th className="py-2 px-2 text-right">المنتج</th>
+                                          <th className="py-2 px-2 text-right whitespace-nowrap">الكمية</th>
+                                          <th className="py-2 px-2 text-right whitespace-nowrap">سعر البيع</th>
+                                          <th className="py-2 px-2 text-right whitespace-nowrap">السعر الأصلي</th>
+                                          <th className="py-2 px-2 text-right whitespace-nowrap">قيمة السطر</th>
+                                          <th className="py-2 px-2 text-right whitespace-nowrap">ربح السطر</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {o.products.map((p, idx) => {
+                                          const q = getQty(p);
+                                          const sp = getSellPrice(p);
+                                          const op = getOriginalPrice(p);
+                                          const rowRev = sp * q;
+                                          const rowProf = (sp - op) * q;
+                                          return (
+                                            <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
+                                              <td className="py-2 px-2">{idx + 1}</td>
+                                              <td className="py-2 px-2">{p?.name || 'منتج'}</td>
+                                              <td className="py-2 px-2">{q}</td>
+                                              <td className="py-2 px-2">{fmt(sp)}</td>
+                                              <td className="py-2 px-2">{fmt(op)}</td>
+                                              <td className="py-2 px-2">{fmt(rowRev)}</td>
+                                              <td className={`py-2 px-2 ${rowProf > 0 ? 'text-green-700' : rowProf < 0 ? 'text-red-700' : 'text-gray-700'}`}>
+                                                {fmt(rowProf)}
+                                              </td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}
             </div>
-          </div>
-        </div>
-      )}
 
-      {showShopDetails && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
-          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-auto">
-            <div className="p-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">تفاصيل منتجات المتجر</h3>
+            {/* تذييل المودال */}
+            <div className="p-4 border-t flex items-center justify-end">
               <button
-                onClick={() => setShowShopDetails(false)}
-                className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+                onClick={closeDetails}
+                className="text-sm px-4 py-2 rounded bg-gray-200 hover:bg-gray-300"
               >
                 إغلاق
               </button>
             </div>
-            <div className="p-4 overflow-x-auto">
-              {shopLines.length === 0 ? (
-                <div className="text-gray-500">لا توجد عناصر.</div>
-              ) : (
-                <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="py-3 px-3 text-right">رقم الطلب</th>
-                      <th className="py-3 px-3 text-right">المنتج</th>
-                      <th className="py-3 px-3 text-right">الكمية</th>
-                      <th className="py-3 px-3 text-right">السعر الحالي</th>
-                      <th className="py-3 px-3 text-right">السعر الأصلي</th>
-                      <th className="py-3 px-3 text-right">ربح السطر</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shopLines.map((row, i) => (
-                      <tr key={row.key} className={i % 2 === 0 ? 'bg-gray-50' : ''}>
-                        <td className="py-2 px-3">{row.orderId}</td>
-                        <td className="py-2 px-3">{row.name}</td>
-                        <td className="py-2 px-3">{row.qty}</td>
-                        <td className="py-2 px-3">{fmt(row.price)}</td>
-                        <td className="py-2 px-3">{fmt(row.originalPrice)}</td>
-                        <td className={`py-2 px-3 ${row.profit > 0 ? 'text-green-700' : row.profit < 0 ? 'text-red-700' : 'text-gray-700'}`}>
-                          {fmt(row.profit)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
           </div>
         </div>
-      )}
-
-      {/* إحصائيات إضافية */}
-      {stats && (
-        <>
-          <AdminStats stats={{ ...stats, totalEarnings: earningsWithoutShipping }} />
-          <AdminStatsChart stats={{ ...stats, totalEarnings: earningsWithoutShipping }} />
-        </>
       )}
     </div>
   );

@@ -26,11 +26,12 @@ const categories = [
 ];
 
 const genderTypes = [
+  { label: 'اختر النوع', value: '', disabled: true },
   { label: 'رجالي', value: 'رجالي' },
   { label: 'نسائي', value: 'نسائي' },
 ];
 
-// ✅ أضفنا "محافظ" هنا
+// ✅ الأصناف اللي يتطلب فيها gender
 const GENDER_REQUIRED_CATEGORIES = new Set(['نظارات', 'ساعات', 'احذية', 'محافظ']);
 
 const UpdateProduct = () => {
@@ -66,7 +67,7 @@ const UpdateProduct = () => {
         originalPrice: productData.product.originalPrice ?? '',
         description: productData.product.description || '',
         image: productData.product.image || '',
-        gender: productData.product.gender || '',
+        gender: productData.product.gender || '',   // ✅ إذا ما فيه قيمة نخليه فاضي
         quantity: productData.product.quantity ?? 0,
       });
       setShowGenderField(GENDER_REQUIRED_CATEGORIES.has(productData.product.category));
@@ -181,7 +182,7 @@ const UpdateProduct = () => {
           <SelectInput
             label="نوع المنتج"
             name="gender"
-            value={product.gender}
+            value={product.gender || ''}   // ✅ إذا ما مختار يجي "اختر النوع"
             onChange={handleChange}
             options={genderTypes}
             required
