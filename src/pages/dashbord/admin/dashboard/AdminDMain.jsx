@@ -6,23 +6,65 @@ import AdminStats from './AdminStats';
 
 const AdminDMain = () => {
   const { user } = useSelector((state) => state.auth);
-  const { data: orders, error, isLoading } = useGetAllOrdersQuery();
 
-  // ====== فلتر الأيام للقسم السفلي ======
-  const [days, setDays] = useState('7'); // 7 | 30 | 90 | 'all'
+  // اجلب البيانات وتأكد أن لدينا مصفوفة طلبات دائمًا
+  const { data, error, isLoading } = useGetAllOrdersQuery();
+  const ordersList = Array.isArray(data) ? data : (data?.orders ?? []);
+
+  // ====== فلتر الفترة (اليوم / أمس / 7 / 30 / 90 / الكل) ======
+  const [days, setDays] = useState('7'); // 'today' | 'yesterday' | '7' | '30' | '90' | 'all'
 
   const filterByDays = useCallback((list, d) => {
     if (!Array.isArray(list)) return [];
+    const now = new Date();
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+
+    if (d === 'today') {
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      return list.filter((o) => {
+        const t = new Date(o?.createdAt || o?.updatedAt || 0);
+        return t >= start && t <= end;
+      });
+    }
+
+    if (d === 'yesterday') {
+      const yStart = new Date(now);
+      yStart.setDate(yStart.getDate() - 1);
+      yStart.setHours(0, 0, 0, 0);
+      const yEnd = new Date(yStart);
+      yEnd.setHours(23, 59, 59, 999);
+      return list.filter((o) => {
+        const t = new Date(o?.createdAt || o?.updatedAt || 0);
+        return t >= yStart && t <= yEnd;
+      });
+    }
+
     if (d === 'all') return list;
-    const now = Date.now();
-    const from = now - Number(d) * 24 * 60 * 60 * 1000;
-    return list.filter((o) => {
-      const t = new Date(o?.createdAt || o?.updatedAt || 0).getTime();
-      return t >= from && t <= now;
-    });
+
+    const n = Number(d);
+    if (!Number.isNaN(n) && n > 0) {
+      const from = new Date(now);
+      from.setDate(from.getDate() - (n - 1));
+      from.setHours(0, 0, 0, 0);
+      return list.filter((o) => {
+        const t = new Date(o?.createdAt || o?.updatedAt || 0);
+        return t >= from && t <= end;
+      });
+    }
+
+    return list;
   }, []);
 
-  // ====== Helpers للوصول الآمن للحقول ======
+  const periodLabel = useMemo(() => {
+    if (days === 'all') return 'كل الفترات';
+    if (days === 'today') return 'اليوم';
+    if (days === 'yesterday') return 'أمس';
+    return `آخر ${days} يوم`;
+  }, [days]);
+
+  // ====== Helpers ======
   const getOriginalPrice = (item) =>
     Number(
       item?.originalPrice ??
@@ -43,7 +85,7 @@ const AdminDMain = () => {
 
   const getQty = (item) => Number(item?.quantity ?? item?.qty ?? 0) || 0;
 
-  const lineRevenue = (item) => getSellPrice(item) * getQty(item); // قيمة السطر
+  const lineRevenue = (item) => getSellPrice(item) * getQty(item);                      // قيمة السطر
   const lineProfit  = (item) => (getSellPrice(item) - getOriginalPrice(item)) * getQty(item); // ربح السطر
 
   const orderAgg = (order) => {
@@ -67,14 +109,14 @@ const AdminDMain = () => {
       hour: '2-digit', minute: '2-digit'
     });
 
-  // ====== الستّة الرئيسية (محل / متجر) ======
+  // ====== مجاميع كل الزمن (محل / متجر) ======
   const {
     ordersAmountStore,
     ordersAmountShop,
     netProfitStore,
     netProfitShop,
   } = useMemo(() => {
-    const list = Array.isArray(orders) ? orders : [];
+    const list = Array.isArray(ordersList) ? ordersList : [];
 
     let _ordersAmountStore = 0;
     let _ordersAmountShop  = 0;
@@ -99,14 +141,14 @@ const AdminDMain = () => {
       netProfitStore:    _netProfitStore,
       netProfitShop:     _netProfitShop,
     };
-  }, [orders]);
+  }, [ordersList]);
 
   const netProfitTotal    = useMemo(() => (netProfitStore + netProfitShop), [netProfitStore, netProfitShop]);
   const ordersTotalAmount = useMemo(() => (ordersAmountStore + ordersAmountShop), [ordersAmountStore, ordersAmountShop]);
 
-  // ====== تفاصيل الفترة (حسب days) + قائمة الطلبات لهذه الفترة ======
+  // ====== تفاصيل الفترة + قائمة الطلبات للفترة ======
   const { periodRevenueTotal, periodProfitTotal, periodOrders } = useMemo(() => {
-    const base = Array.isArray(orders) ? orders : [];
+    const base = Array.isArray(ordersList) ? ordersList : [];
     const filtered = filterByDays(base, days).slice().sort(
       (a, b) => new Date(b.createdAt || b.updatedAt) - new Date(a.createdAt || a.updatedAt)
     );
@@ -124,21 +166,36 @@ const AdminDMain = () => {
       periodProfitTotal:  prof,
       periodOrders: enhanced,
     };
-  }, [orders, days, filterByDays]);
+  }, [ordersList, days, filterByDays]);
 
-  // ====== صفحة خفية (مودال) للتفاصيل ======
-  // type: 'profit' | 'revenue' | null
-  const [detailsType, setDetailsType] = useState(null);
+  // ====== مجاميع الفترة الحالية (محل / متجر) لتمريرها إلى AdminStats ======
+  const periodShopStore = useMemo(() => {
+    let pOrdersAmountStore = 0;
+    let pOrdersAmountShop  = 0;
+    let pNetProfitStore    = 0;
+    let pNetProfitShop     = 0;
+
+    for (const o of periodOrders) {
+      const revenue = Number(o?.__revenue) || 0;
+      const profit  = Number(o?.__profit)  || 0;
+      const isStore = o?.wilayat === 'محل';
+      if (isStore) {
+        pOrdersAmountStore += revenue;
+        pNetProfitStore    += profit;
+      } else {
+        pOrdersAmountShop  += revenue;
+        pNetProfitShop     += profit;
+      }
+    }
+    return { pOrdersAmountStore, pOrdersAmountShop, pNetProfitStore, pNetProfitShop };
+  }, [periodOrders]);
+
+  // ====== المودال (صفحة خفيّة) ======
+  const [detailsType, setDetailsType] = useState(null);        // 'profit' | 'revenue' | null
   const [expandedOrderId, setExpandedOrderId] = useState(null);
 
-  const openDetails = (type) => {
-    setDetailsType(type);
-    setExpandedOrderId(null);
-  };
-  const closeDetails = () => {
-    setDetailsType(null);
-    setExpandedOrderId(null);
-  };
+  const openDetails = (type) => { setDetailsType(type); setExpandedOrderId(null); };
+  const closeDetails = () => { setDetailsType(null); setExpandedOrderId(null); };
 
   return (
     <div className="p-6" dir="rtl">
@@ -148,44 +205,41 @@ const AdminDMain = () => {
       {isLoading && <div className="mb-4">جاري التحميل...</div>}
       {error && <div className="mb-4 text-red-600">فشل تحميل البيانات!</div>}
 
-      {/* الستة الرئيسية */}
+      {/* قسم الإحصائيات العلوية المقسّم حسب الأيام (داخل AdminStats) */}
       {!isLoading && !error && (
         <AdminStats
-          stats={{
-            netProfitTotal,          // إجمالي صافي الربح
-            ordersTotalAmount,       // إجمالي الطلبات (قيمة فقط)
-            netProfitShop,           // صافي ربح المتجر
-            netProfitStore,          // صافي ربح المحل
-            ordersAmountShop,        // الطلبات من المتجر (قيمة)
-            ordersAmountStore,       // الطلبات من المحل (قيمة)
+          days={days}
+          onChangeDays={setDays}
+          periodLabel={periodLabel}
+          // القيم المفلترة للفترة الحالية:
+          statsPeriod={{
+            netProfitShop:     periodShopStore.pNetProfitShop,
+            netProfitStore:    periodShopStore.pNetProfitStore,
+            ordersAmountShop:  periodShopStore.pOrdersAmountShop,
+            ordersAmountStore: periodShopStore.pOrdersAmountStore,
+          }}
+          // (اختياري) إجماليات كل الزمن:
+          statsAllTime={{
+            netProfitShop,
+            netProfitStore,
+            ordersAmountShop,
+            ordersAmountStore,
+            netProfitTotal,
+            ordersTotalAmount,
           }}
         />
       )}
 
-      {/* ====== قسم التفاصيل مع فلتر الأيام ====== */}
+      {/* ====== قسم تفاصيل الفترة مع بطاقتين (تفتح المودال) ====== */}
       {!isLoading && !error && (
         <div className="mt-8 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">تفاصيل الطلبات حسب الفترة</h2>
-
-            <div className="flex items-center gap-2">
-              <label htmlFor="days" className="text-sm text-gray-600">المدة:</label>
-              <select
-                id="days"
-                value={days}
-                onChange={(e) => setDays(e.target.value)}
-                className="border rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                <option value="7">آخر 7 أيام</option>
-                <option value="30">آخر 30 يومًا</option>
-                <option value="90">آخر 90 يومًا</option>
-                <option value="all">كل الفترات</option>
-              </select>
-            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">{periodLabel}</span>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 grid-cols-1">
-            {/* 1) إجمالي صافي الربح (للفترة) - يفتح صفحة خفية */}
+            {/* 1) إجمالي صافي الربح (للفترة) */}
             <button
               type="button"
               onClick={() => openDetails('profit')}
@@ -195,7 +249,7 @@ const AdminDMain = () => {
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-base md:text-lg font-semibold">إجمالي صافي الربح (للفترة)</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-                  {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                  {periodLabel}
                 </span>
               </div>
               <p className="text-sm text-gray-500 mb-3">(price - originalPrice) × الكمية</p>
@@ -207,7 +261,7 @@ const AdminDMain = () => {
               </div>
             </button>
 
-            {/* 2) إجمالي الطلبات (قيمة فقط) (للفترة) - يفتح صفحة خفية */}
+            {/* 2) إجمالي الطلبات (قيمة فقط) (للفترة) */}
             <button
               type="button"
               onClick={() => openDetails('revenue')}
@@ -217,7 +271,7 @@ const AdminDMain = () => {
               <div className="flex items-center justify-between mb-1">
                 <h3 className="text-base md:text-lg font-semibold">إجمالي الطلبات (قيمة فقط) (للفترة)</h3>
                 <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                  {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                  {periodLabel}
                 </span>
               </div>
               <p className="text-sm text-gray-500 mb-3">price × الكمية</p>
@@ -229,7 +283,7 @@ const AdminDMain = () => {
         </div>
       )}
 
-      {/* ====== المودال (الصفحة الخفية) ====== */}
+      {/* ====== المودال (الصفحة الخفيّة) ====== */}
       {detailsType && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3">
           <div className="bg-white rounded-lg w-full max-w-6xl max-h-[92vh] overflow-auto" dir="rtl">
@@ -237,7 +291,7 @@ const AdminDMain = () => {
             <div className="p-4 border-b flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold">
-                  {detailsType === 'profit' ? 'تفاصيل صافي الربح' : 'تفاصيل قيمة الطلبات'} — {days === 'all' ? 'كل الفترات' : `آخر ${days} يوم`}
+                  {detailsType === 'profit' ? 'تفاصيل صافي الربح' : 'تفاصيل قيمة الطلبات'} — {periodLabel}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">
                   اضغط على أي طلب لاستعراض أصناف الطلب (تفاصيل المنتجات).
@@ -307,7 +361,7 @@ const AdminDMain = () => {
                             </td>
                           </tr>
 
-                          {/* صف التفاصيل (المنتجات) */}
+                          {/* تفاصيل المنتجات داخل الطلب */}
                           {expanded && Array.isArray(o.products) && (
                             <tr>
                               <td colSpan={6} className="p-0">
@@ -327,10 +381,10 @@ const AdminDMain = () => {
                                       </thead>
                                       <tbody>
                                         {o.products.map((p, idx) => {
-                                          const q = getQty(p);
-                                          const sp = getSellPrice(p);
-                                          const op = getOriginalPrice(p);
-                                          const rowRev = sp * q;
+                                          const q  = Number(p?.quantity ?? p?.qty ?? 0) || 0;
+                                          const sp = Number(p?.price ?? p?.product?.price ?? p?.productDetails?.price ?? p?.productId?.price ?? 0);
+                                          const op = Number(p?.originalPrice ?? p?.product?.originalPrice ?? p?.productDetails?.originalPrice ?? p?.productId?.originalPrice ?? 0);
+                                          const rowRev  = sp * q;
                                           const rowProf = (sp - op) * q;
                                           return (
                                             <tr key={idx} className={idx % 2 === 0 ? 'bg-gray-50' : ''}>
@@ -361,7 +415,6 @@ const AdminDMain = () => {
               )}
             </div>
 
-            {/* تذييل المودال */}
             <div className="p-4 border-t flex items-center justify-end">
               <button
                 onClick={closeDetails}

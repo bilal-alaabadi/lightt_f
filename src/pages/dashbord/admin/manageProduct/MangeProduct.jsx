@@ -24,18 +24,25 @@ const ManageProduct = () => {
     sort: `${sortField}:${sortOrder}`,
   });
 
-  const isLowCount = useMemo(
-    () => !isLoading && !error && (totalProducts ?? products.length) <= 3,
-    [isLoading, error, totalProducts, products.length]
-  );
+  // 🔴 هل يوجد منتجات منخفضة المخزون (≤ 3)؟
+  const lowStockProducts = useMemo(() => products.filter(p => (Number(p?.quantity) || 0) <= 3), [products]);
+  const hasLowStock = lowStockProducts.length > 0;
 
-  // إذا كان العدد قليل، ثبّت الفرز على الأحدث أولاً
+  // لو فيه نقص مخزون: نثبّت الفرز على الأحدث ونعرض المنتجات منخفضة المخزون أولاً
   useEffect(() => {
-    if (isLowCount) {
+    if (hasLowStock) {
       setSortField('createdAt');
       setSortOrder('desc');
     }
-  }, [isLowCount]);
+  }, [hasLowStock]);
+
+  // نعرض المنتجات مع وضع قليلة المخزون في الأعلى (داخل الصفحة الحالية فقط)
+  const displayedProducts = useMemo(() => {
+    if (!hasLowStock) return products;
+    const low = products.filter(p => (Number(p?.quantity) || 0) <= 3);
+    const rest = products.filter(p => (Number(p?.quantity) || 0) > 3);
+    return [...low, ...rest];
+  }, [products, hasLowStock]);
 
   const startProduct = totalProducts === 0 ? 0 : (currentPage - 1) * productsPerPage + 1;
   const endProduct = totalProducts === 0 ? 0 : startProduct + products.length - 1;
@@ -73,21 +80,21 @@ const ManageProduct = () => {
     <section className="py-4 bg-gray-100 text-right w-full">
       <div className="sm:px-4">
         <div className="bg-white shadow-lg rounded-lg p-4">
-          {/* إشعار عند قلة عدد المنتجات */}
-          {isLowCount && (
-            <div className="mb-4 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm">
+          {/* تنبيه عام عند وجود منتجات منخفضة المخزون */}
+          {hasLowStock && (
+            <div className="mb-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
-                  <p className="font-semibold text-yellow-800">تنبيه:</p>
-                  <p className="text-yellow-700">
-                    عدد المنتجات الحالي {totalProducts} فقط. ننصح بإضافة منتجات جديدة. تم عرض الأحدث أولًا تلقائيًا.
+                  <p className="font-semibold text-red-800">تنبيه مخزون منخفض:</p>
+                  <p className="text-red-700">
+                    يوجد منتجات عددها ≤ 3. تم وضعها في أعلى القائمة وإبرازها باللون الأحمر.
                   </p>
                 </div>
                 <Link
                   to="/dashboard/add-product"
-                  className="shrink-0 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-xs sm:text-sm"
+                  className="shrink-0 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs sm:text-sm"
                 >
-                  + إضافة منتج جديد
+                  + إضافة منتج
                 </Link>
               </div>
             </div>
@@ -97,8 +104,7 @@ const ManageProduct = () => {
           <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
             <h3 className="text-lg font-semibold">إدارة المنتجات</h3>
 
-            {/* عندما العدد قليل، نخلي زر الإضافة يظهر أولًا ثم البحث */}
-            <div className={`flex ${isLowCount ? 'flex-col-reverse sm:flex-row' : 'flex-col sm:flex-row'} gap-2 w-full sm:w-auto`}>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
               <input
                 type="text"
                 placeholder="ابحث عن منتج..."
@@ -109,7 +115,7 @@ const ManageProduct = () => {
                   setCurrentPage(1);
                 }}
               />
-              {!isLowCount && (
+              {!hasLowStock && (
                 <Link
                   to="/dashboard/add-product"
                   className="bg-blue-500 text-white px-3 py-1 rounded text-sm text-center"
@@ -149,63 +155,80 @@ const ManageProduct = () => {
                       >
                         السعر {sortField === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
                       </th>
+                      <th className="p-2">الكمية</th>
                       <th className="p-2">الفئة</th>
                       <th className="p-2">الإجراءات</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {products.map((product, index) => (
-                      <tr
-                        key={product._id}
-                        className={`border-b hover:bg-gray-50 ${isLowCount ? 'bg-yellow-50/40' : ''}`}
-                      >
-                        <td className="p-2 text-center">{startProduct + index}</td>
-                        <td className="p-2 text-center">{product.name}</td>
-                        <td className="p-2 text-center">
-                          {Array.isArray(product.image) && product.image.length > 0 ? (
-                            <img
-                              src={product.image[0]}
-                              alt={product.name}
-                              className="w-10 h-10 object-cover mx-auto rounded"
-                            />
-                          ) : typeof product.image === 'string' && product.image ? (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-10 h-10 object-cover mx-auto rounded"
-                            />
-                          ) : (
-                            <span className="text-gray-400">لا توجد صورة</span>
-                          )}
-                        </td>
-                        <td className="p-2 text-center">
-                          <div className="flex flex-col">
-                            <span className="font-semibold">{product.price} ر.ع</span>
-                            {product.oldPrice && (
-                              <span className="text-xs text-gray-500 line-through">{product.oldPrice} ر.ع</span>
+                    {displayedProducts.map((product, index) => {
+                      const qty = Number(product?.quantity) || 0;
+                      const isLow = qty <= 3;
+                      return (
+                        <tr
+                          key={product._id}
+                          className={`border-b hover:bg-gray-50 ${isLow ? 'bg-red-50/60' : ''}`}
+                        >
+                          <td className="p-2 text-center">{startProduct + index}</td>
+                          <td className="p-2 text-center">{product.name}</td>
+                          <td className="p-2 text-center">
+                            {Array.isArray(product.image) && product.image.length > 0 ? (
+                              <img
+                                src={product.image[0]}
+                                alt={product.name}
+                                className="w-10 h-10 object-cover mx-auto rounded"
+                              />
+                            ) : typeof product.image === 'string' && product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-10 h-10 object-cover mx-auto rounded"
+                              />
+                            ) : (
+                              <span className="text-gray-400">لا توجد صورة</span>
                             )}
-                          </div>
-                        </td>
-                        <td className="p-2 text-center">{product.category}</td>
-                        <td className="p-2 text-center space-x-1">
-                          <Link
-                            to={`/dashboard/update-product/${product._id}`}
-                            className="bg-blue-500 text-white px-2 py-1 rounded text-xs sm:text-sm inline-block"
-                          >
-                            تعديل
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteProduct(product._id)}
-                            className="bg-red-500 text-white px-2 py-1 rounded text-xs sm:text-sm"
-                          >
-                            حذف
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {products.length === 0 && (
+                          </td>
+                          <td className="p-2 text-center">
+                            <div className="flex flex-col">
+                              <span className="font-semibold">{product.price} ر.ع</span>
+                              {product.oldPrice && (
+                                <span className="text-xs text-gray-500 line-through">
+                                  {product.oldPrice} ر.ع
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-2 text-center">
+                            <div className="inline-flex items-center gap-2">
+                              <span>{qty}</span>
+                              {isLow && (
+                                <span className="px-2 py-0.5 text-[10px] rounded-full bg-red-600 text-white">
+                                  باقي {qty}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-2 text-center">{product.category}</td>
+                          <td className="p-2 text-center space-x-1">
+                            <Link
+                              to={`/dashboard/update-product/${product._id}`}
+                              className="bg-blue-500 text-white px-2 py-1 rounded text-xs sm:text-sm inline-block"
+                            >
+                              تعديل
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteProduct(product._id)}
+                              className="bg-red-500 text-white px-2 py-1 rounded text-xs sm:text-sm"
+                            >
+                              حذف
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {displayedProducts.length === 0 && (
                       <tr>
-                        <td colSpan={6} className="p-6 text-center text-gray-500">
+                        <td colSpan={7} className="p-6 text-center text-gray-500">
                           لا توجد منتجات حالياً. ابدأ بإضافة منتج جديد.
                         </td>
                       </tr>

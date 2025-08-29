@@ -63,8 +63,8 @@ const ManageUser = () => {
                                             <td className="p-2">{index + 1}</td>
                                             <td className="p-2">{user?.email || 'غير متوفر'}</td>
                                             <td className="p-2">
-                                                <span className={`rounded-full py-1 px-3 ${user?.role === "admin" ? "bg-indigo-500 text-white" : "bg-amber-300"}`}>
-                                                    {user?.role === "admin" ? "مسؤول" : "مستخدم"}
+                                                <span className={`rounded-full py-1 px-3 ${user?.role === "admin" ? "bg-indigo-500 text-white" : "bg-green-400"}`}>
+                                                    {user?.role === "admin" ? "مسؤول" : "محل"}
                                                 </span>
                                             </td>
                                             <td className="p-2 font-bold text-lg text-blue-500 cursor-pointer">
