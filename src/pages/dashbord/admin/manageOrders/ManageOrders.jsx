@@ -34,6 +34,7 @@ const ManageOrders = () => {
     setSelectedOrder(null);
   };
 
+<<<<<<< HEAD
   // داخل الدالة الحالية
   const handleDeleteOder = async (orderId) => {
     const ok = window.confirm('هل أنت متأكد من حذف الطلب؟ سيتم إرجاع كميات المنتجات للمخزون.');
@@ -47,6 +48,22 @@ const ManageOrders = () => {
       alert('فشل حذف الطلب');
     }
   };
+=======
+// داخل الدالة الحالية
+const handleDeleteOder = async (orderId) => {
+  const ok = window.confirm('هل أنت متأكد من حذف الطلب؟ سيتم إرجاع كميات المنتجات للمخزون.');
+  if (!ok) return;
+  try {
+    await deleteOrder(orderId).unwrap();
+    alert("تم حذف الطلب بنجاح وتمت إعادة الكميات");
+    refetch();
+  } catch (error) {
+    console.error("فشل حذف الطلب:", error);
+    alert("فشل حذف الطلب");
+  }
+};
+
+>>>>>>> fc465e4275c23e902d89fdccc0db65bae48b7e20
 
   const handleViewOrder = (order) => setViewOrder(order);
   const handleCloseViewModal = () => setViewOrder(null);
