@@ -25,7 +25,7 @@ const ManageOrders = () => {
   );
 
   // فلاتر الوقت
-  const [timeFilter, setTimeFilter] = useState('all');  // all | today | yesterday | last7 | thisMonth | custom
+  const [timeFilter, setTimeFilter] = useState('all'); // all | today | yesterday | last7 | thisMonth | custom
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
@@ -34,20 +34,19 @@ const ManageOrders = () => {
     setSelectedOrder(null);
   };
 
-// داخل الدالة الحالية
-const handleDeleteOder = async (orderId) => {
-  const ok = window.confirm('هل أنت متأكد من حذف الطلب؟ سيتم إرجاع كميات المنتجات للمخزون.');
-  if (!ok) return;
-  try {
-    await deleteOrder(orderId).unwrap();
-    alert("تم حذف الطلب بنجاح وتمت إعادة الكميات");
-    refetch();
-  } catch (error) {
-    console.error("فشل حذف الطلب:", error);
-    alert("فشل حذف الطلب");
-  }
-};
-
+  // داخل الدالة الحالية
+  const handleDeleteOder = async (orderId) => {
+    const ok = window.confirm('هل أنت متأكد من حذف الطلب؟ سيتم إرجاع كميات المنتجات للمخزون.');
+    if (!ok) return;
+    try {
+      await deleteOrder(orderId).unwrap();
+      alert('تم حذف الطلب بنجاح وتمت إعادة الكميات');
+      refetch();
+    } catch (error) {
+      console.error('فشل حذف الطلب:', error);
+      alert('فشل حذف الطلب');
+    }
+  };
 
   const handleViewOrder = (order) => setViewOrder(order);
   const handleCloseViewModal = () => setViewOrder(null);
@@ -78,7 +77,7 @@ const handleDeleteOder = async (orderId) => {
 المجموع النهائي: ${(viewOrder.amount || 0).toFixed(2)} ر.ع
 
 المنتجات:
-${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toFixed(2)} ر.ع)`).join('\n')}
+${viewOrder.products?.map((p) => `- ${p.name} (${p.quantity}x ${(p.price || 0).toFixed(2)} ر.ع)`).join('\n')}
 
 الرجاء تأكيد استلامك للطلب. شكراً لثقتكم بنا!`;
     window.open(`https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`, '_blank');
@@ -178,8 +177,8 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
   if (error) return <div className="p-4 text-center text-red-500">لا توجد طلبات</div>;
 
   return (
-    <div className='section__container p-4 md:p-6' dir='rtl'>
-      <h2 className='text-xl md:text-2xl font-semibold mb-4'>إدارة الطلبات</h2>
+    <div className="section__container p-4 md:p-6" dir="rtl">
+      <h2 className="text-xl md:text-2xl font-semibold mb-4">إدارة الطلبات</h2>
 
       {/* شريط الفلاتر */}
       <div className="mb-4 md:mb-6 flex flex-col md:flex-row gap-3 md:items-end">
@@ -187,21 +186,27 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
         <div className="flex items-center gap-2">
           <button
             onClick={() => setTypeFilter('shop')}
-            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${typeFilter === 'shop' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${
+              typeFilter === 'shop' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+            }`}
             title="طلبات المتجر"
           >
             طلبات المتجر
           </button>
           <button
             onClick={() => setTypeFilter('store')}
-            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${typeFilter === 'store' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${
+              typeFilter === 'store' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+            }`}
             title="طلبات المحل"
           >
             طلبات المحل
           </button>
           <button
             onClick={() => setTypeFilter('all')}
-            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${typeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'}`}
+            className={`px-3 py-1.5 rounded-md text-sm md:text-base ${
+              typeFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
+            }`}
             title="كل الطلبات"
           >
             الكل
@@ -250,27 +255,25 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
         groupedOrders.map(({ day, items }) => (
           <div key={day} className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg md:text-xl font-semibold">
-                {formatDateOnly(day)}
-              </h3>
+              <h3 className="text-lg md:text-xl font-semibold">{formatDateOnly(day)}</h3>
               <span className="text-sm text-gray-500">({items.length} طلب)</span>
             </div>
 
             <div className="overflow-x-auto">
-              <table className='min-w-full bg-white border border-gray-200 rounded-lg'>
-                <thead className='bg-gray-100'>
+              <table className="min-w-full bg-white border border-gray-200 rounded-lg">
+                <thead className="bg-gray-100">
                   <tr>
-                    <th className='py-3 px-2 md:px-4 border-b text-right'>رقم الطلب</th>
-                    <th className='py-3 px-2 md:px-4 border-b text-right'>العميل</th>
-                    <th className='py-3 px-2 md:px-4 border-b text-right'>التاريخ</th>
-                    <th className='py-3 px-2 md:px-4 border-b text-right'>الإجراءات</th>
+                    <th className="py-3 px-2 md:px-4 border-b text-right">رقم الطلب</th>
+                    <th className="py-3 px-2 md:px-4 border-b text-right">العميل</th>
+                    <th className="py-3 px-2 md:px-4 border-b text-right">التاريخ</th>
+                    <th className="py-3 px-2 md:px-4 border-b text-right">الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((order, index) => (
                     <tr key={order._id || index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
-                      <td className='py-3 px-2 md:px-4 border-b'>{order?.orderId || '--'}</td>
-                      <td className='py-3 px-2 md:px-4 border-b'>
+                      <td className="py-3 px-2 md:px-4 border-b">{order?.orderId || '--'}</td>
+                      <td className="py-3 px-2 md:px-4 border-b">
                         {order?.wilayat === 'محل' ? (
                           <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm inline-flex items-center gap-1">
                             <FaStore className="text-green-600" />
@@ -280,19 +283,13 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                           order?.customerName || order?.email || 'غير محدد'
                         )}
                       </td>
-                      <td className='py-3 px-2 md:px-4 border-b'>{formatDate(order?.updatedAt || order?.createdAt)}</td>
-                      <td className='py-3 px-2 md:px-4 border-b'>
+                      <td className="py-3 px-2 md:px-4 border-b">{formatDate(order?.updatedAt || order?.createdAt)}</td>
+                      <td className="py-3 px-2 md:px-4 border-b">
                         <div className="flex flex-wrap gap-2 justify-end">
-                          <button
-                            className="text-blue-500 hover:underline text-sm md:text-base"
-                            onClick={() => handleViewOrder(order)}
-                          >
+                          <button className="text-blue-500 hover:underline text-sm md:text-base" onClick={() => handleViewOrder(order)}>
                             عرض التفاصيل
                           </button>
-                          <button
-                            className="text-red-500 hover:underline text-sm md:text-base"
-                            onClick={() => handleDeleteOder(order?._id)}
-                          >
+                          <button className="text-red-500 hover:underline text-sm md:text-base" onClick={() => handleDeleteOder(order?._id)}>
                             حذف
                           </button>
                         </div>
@@ -340,8 +337,12 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                 <p className="text-gray-600">شكراً لاختياركم متجرنا</p>
               </div>
               <div className="invoice-meta">
-                <p><strong>رقم الفاتورة:</strong> #{viewOrder.orderId}</p>
-                <p><strong>تاريخ الفاتورة:</strong> {formatDate(viewOrder.createdAt)}</p>
+                <p>
+                  <strong>رقم الفاتورة:</strong> #{viewOrder.orderId}
+                </p>
+                <p>
+                  <strong>تاريخ الفاتورة:</strong> {formatDate(viewOrder.createdAt)}
+                </p>
               </div>
             </div>
 
@@ -349,22 +350,31 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-bold text-lg mb-3 border-b pb-2">معلومات العميل</h3>
                 <div className="space-y-2">
-                  <p><strong>الاسم:</strong> {viewOrder.customerName || 'غير محدد'}</p>
-                  <p><strong>رقم الهاتف:</strong> {viewOrder.customerPhone || 'غير محدد'}</p>
+                  <p>
+                    <strong>الاسم:</strong> {viewOrder.customerName || 'غير محدد'}
+                  </p>
+                  <p>
+                    <strong>رقم الهاتف:</strong> {viewOrder.customerPhone || 'غير محدد'}
+                  </p>
                 </div>
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h3 className="font-bold text-lg mb-3 border-b pb-2">معلومات التوصيل</h3>
                 <div className="space-y-2">
-                  <p><strong>الولاية:</strong> {viewOrder.wilayat || 'غير محدد'}</p>
-                  <p><strong>ملاحظات:</strong> {viewOrder.notes || 'لا توجد ملاحظات'}</p>
+                  <p>
+                    <strong>الولاية:</strong> {viewOrder.wilayat || 'غير محدد'}
+                  </p>
+                  <p>
+                    <strong>ملاحظات:</strong> {viewOrder.notes || 'لا توجد ملاحظات'}
+                  </p>
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
               <h3 className="font-bold text-lg mb-3 border-b pb-2">المنتجات المطلوبة</h3>
+
               <div className="border rounded-lg overflow-hidden">
                 <table className="min-w-full">
                   <thead className="bg-gray-100">
@@ -379,36 +389,87 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                   </thead>
                   <tbody>
                     {viewOrder.products?.map((product, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                        <td className="py-3 px-4 text-center">{index + 1}</td>
-                        <td className="py-3 px-4">
-                          <img
-                            src={product.image || '/images/placeholder.jpg'}
-                            alt={product.name || 'منتج'}
-                            className="w-16 h-16 object-cover rounded mx-auto"
-                            onError={(e) => {
-                              e.target.src = '/images/placeholder.jpg';
-                              e.target.alt = 'صورة غير متوفرة';
-                            }}
-                          />
-                        </td>
-                        <td className="py-3 px-4">
-                          <div>
-                            <p className="font-medium">{product.name || 'منتج غير محدد'}</p>
-                            {product.selectedSize && (
-                              <p className="text-xs text-gray-500">الحجم: {product.selectedSize}</p>
-                            )}
-                            {product.selectedColor && (
-                              <p className="text-xs text-gray-500">اللون: {product.selectedColor}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-center">{product.quantity || 0}</td>
-                        <td className="py-3 px-4 text-left">{formatPrice(product.price)} ر.ع</td>
-                        <td className="py-3 px-4 text-left font-medium">
-                          {formatPrice((product.price || 0) * (product.quantity || 0))} ر.ع
-                        </td>
-                      </tr>
+                      <React.Fragment key={index}>
+                        <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          <td className="py-3 px-4 text-center">{index + 1}</td>
+                          <td className="py-3 px-4">
+                            <img
+                              src={product.image || '/images/placeholder.jpg'}
+                              alt={product.name || 'منتج'}
+                              className="w-16 h-16 object-cover rounded mx-auto"
+                              onError={(e) => {
+                                e.target.src = '/images/placeholder.jpg';
+                                e.target.alt = 'صورة غير متوفرة';
+                              }}
+                            />
+                          </td>
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium">{product.name || 'منتج غير محدد'}</p>
+                              {product.selectedSize && <p className="text-xs text-gray-500">الحجم: {product.selectedSize}</p>}
+                              {product.selectedColor && <p className="text-xs text-gray-500">اللون: {product.selectedColor}</p>}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">{product.quantity || 0}</td>
+                          <td className="py-3 px-4 text-left">{formatPrice(product.price)} ر.ع</td>
+                          <td className="py-3 px-4 text-left font-medium">
+                            {formatPrice((product.price || 0) * (product.quantity || 0))} ر.ع
+                          </td>
+                        </tr>
+
+                        {product?.tailoring?.mode && (
+                          <tr className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                            <td className="py-3 px-4" colSpan={6}>
+                              <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+                                <p className="text-sm text-gray-800">
+                                  <span className="font-semibold">التفصيل:</span>{' '}
+                                  {product.tailoring.mode === 'detail' ? 'تفصيل' : 'بدون تفصيل'}
+                                </p>
+
+                                {product.tailoring.mode === 'detail' && (
+                                  <>
+                                    <p className="text-sm text-gray-800 mt-1">
+                                      <span className="font-semibold">رسوم التفصيل:</span>{' '}
+                                      {formatPrice(product.tailoring.fee || 0)} ر.ع
+                                    </p>
+
+                                    {product.tailoring.measurements && (
+                                      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-700">
+                                        <p>
+                                          <span className="font-semibold">الطول:</span> {product.tailoring.measurements.length}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">العرض الأعلى:</span> {product.tailoring.measurements.upperWidth}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">العرض الأسفل من الأعلى:</span>{' '}
+                                          {product.tailoring.measurements.lowerWidthFromTop}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">قياس الرقبة:</span> {product.tailoring.measurements.neck}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">طول الردون:</span> {product.tailoring.measurements.sleeveLength}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">عرض الردون:</span> {product.tailoring.measurements.sleeveWidth}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">قياس العرض السفلي الأخير:</span>{' '}
+                                          {product.tailoring.measurements.lastBottomWidth}
+                                        </p>
+                                        <p>
+                                          <span className="font-semibold">قياس الكتف:</span> {product.tailoring.measurements.shoulder}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -441,9 +502,7 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                     )}
                     <div className="flex justify-between items-center pt-3 border-t">
                       <span className="font-bold text-lg">الإجمالي النهائي:</span>
-                      <span className="font-bold text-lg text-blue-600">
-                        {formatPrice(viewOrder.amount)} ر.ع
-                      </span>
+                      <span className="font-bold text-lg text-blue-600">{formatPrice(viewOrder.amount)} ر.ع</span>
                     </div>
                   </div>
                 </div>
@@ -456,7 +515,7 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                 onClick={handleCloseViewModal}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z"/>
+                  <path d="M24 20.188l-8.315-8.209 8.2-8.282-3.697-3.697-8.212 8.318-8.31-8.203-3.666 3.666 8.321 8.24-8.206 8.313 3.666 3.666 8.237-8.318 8.285 8.203z" />
                 </svg>
                 إغلاق
               </button>
@@ -465,7 +524,7 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                 onClick={handlePrintOrder}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18 17v4h-12v-4h-4v-9c0-2.761 2.239-5 5-5h10c2.761 0 5 2.239 5 5v9h-4zm-10-1h8v1h-8v-1zm0-2h8v1h-8v-1zm-5-6v5h18v-5c0-1.656-1.344-3-3-3h-12c-1.656 0-3 1.344-3 3zm18 2h-2v-1h2v1z"/>
+                  <path d="M18 17v4h-12v-4h-4v-9c0-2.761 2.239-5 5-5h10c2.761 0 5 2.239 5 5v9h-4zm-10-1h8v1h-8v-1zm0-2h8v1h-8v-1zm-5-6v5h18v-5c0-1.656-1.344-3-3-3h-12c-1.656 0-3 1.344-3 3zm18 2h-2v-1h2v1z" />
                 </svg>
                 طباعة الفاتورة
               </button>
@@ -474,7 +533,7 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                 onClick={handleDownloadPDF}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M14 2v17h2v-7h3v7h2v-17h-7zm-9 0v17h2v-7h3v7h2v-17h-9z"/>
+                  <path d="M14 2v17h2v-7h3v7h2v-17h-7zm-9 0v17h2v-7h3v7h2v-17h-9z" />
                 </svg>
                 تحميل PDF
               </button>
@@ -484,7 +543,7 @@ ${viewOrder.products?.map(p => `- ${p.name} (${p.quantity}x ${(p.price || 0).toF
                   onClick={() => handleContactWhatsApp(viewOrder.customerPhone)}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335 .157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335 .157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
                   </svg>
                   التواصل عبر واتساب
                 </button>

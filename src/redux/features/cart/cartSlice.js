@@ -1,3 +1,4 @@
+// cartSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
@@ -7,65 +8,116 @@ const initialState = {
   shippingFee: 2,
 };
 
+const BULK_THRESHOLD = 3;
+const BULK_DISCOUNT_RATE = 0.2;
+
+const normalizeArabic = (s) => {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[ًٌٍَُِّْ]/g, "") // تشكيل
+    .replace(/أ|إ|آ/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي");
+};
+
+const isGhutra = (product) => {
+  const cat = normalizeArabic(product?.category);
+  const name = normalizeArabic(product?.name);
+
+  // يدعم: غتر / غتره / غتره قطن / غترة قطن ... إلخ
+  const isByCategory = cat.includes("غتر") || cat.includes("غتره") || cat.includes("غتره");
+  const isByName = name.includes("غتر") || name.includes("غتره") || name.includes("غتره");
+
+  return isByCategory || isByName;
+};
+
+const recomputeCart = (state) => {
+  state.selectedItems = state.products.reduce((sum, p) => sum + p.quantity, 0);
+
+  const totalGhutraQty = state.products
+    .filter(isGhutra)
+    .reduce((sum, p) => sum + p.quantity, 0);
+
+  const applyBulkDiscount = totalGhutraQty >= BULK_THRESHOLD;
+
+  let total = 0;
+
+  state.products.forEach((product) => {
+    const unitPrice = Number(product.price || 0);
+    const lineTotal = unitPrice * product.quantity;
+
+    if (isGhutra(product) && applyBulkDiscount) {
+      total += lineTotal * (1 - BULK_DISCOUNT_RATE);
+    } else {
+      total += lineTotal;
+    }
+  });
+
+  state.totalPrice = Number(total.toFixed(2));
+};
+
 const cartSlice = createSlice({
   name: "cart",
   initialState,
   reducers: {
     addToCart: (state, action) => {
       const product = action.payload;
-      const isExist = state.products.find((p) => p._id === product._id);
+      if (!product || !product._id) return;
 
-      if (!isExist) {
-        if (product.quantity <= 0) return;
-        
-        state.products.push({ 
-          ...product, 
+      const maxQty = Number(product.quantity || 0);
+      if (!Number.isFinite(maxQty) || maxQty <= 0) return;
+
+      const existing = state.products.find((p) => p._id === product._id);
+
+      if (!existing) {
+        state.products.push({
+          ...product,
           quantity: 1,
-          maxQuantity: product.quantity, // حفظ الكمية الأصلية للمنتج
-          url: `/product/${product._id}`
+          maxQuantity: maxQty,
+          url: `/product/${product._id}`,
         });
+      } else {
+        if (existing.quantity >= existing.maxQuantity) return;
+        existing.quantity += 1;
       }
 
-      state.selectedItems = setSelectedItems(state);
-      state.totalPrice = setTotalPrice(state);
+      recomputeCart(state);
     },
-    updateQuantity: (state, action) => {
-      state.products = state.products.map((product) => {
-        if (product._id === action.payload.id) {
-          if (action.payload.type === 'increment') {
-            // التحقق من أن الكمية الجديدة لا تتجاوز الكمية المتاحة
-            if (product.quantity < product.maxQuantity) {
-              product.quantity += 1;
-            }
-          } else if (action.payload.type === 'decrement' && product.quantity > 1) {
-            product.quantity -= 1;
-          }
-        }
-        return product;
-      });
 
-      state.selectedItems = setSelectedItems(state);
-      state.totalPrice = setTotalPrice(state);
+    updateQuantity: (state, action) => {
+      const { id, type } = action.payload || {};
+      const product = state.products.find((p) => p._id === id);
+      if (!product) return;
+
+      if (type === "increment") {
+        if (product.quantity < product.maxQuantity) {
+          product.quantity += 1;
+        }
+      }
+
+      if (type === "decrement") {
+        if (product.quantity > 1) {
+          product.quantity -= 1;
+        }
+      }
+
+      recomputeCart(state);
     },
+
     removeFromCart: (state, action) => {
-      state.products = state.products.filter((product) => product._id !== action.payload.id);
-      state.selectedItems = setSelectedItems(state);
-      state.totalPrice = setTotalPrice(state);
+      state.products = state.products.filter((p) => p._id !== action.payload.id);
+      recomputeCart(state);
     },
+
     clearCart: (state) => {
       state.products = [];
       state.selectedItems = 0;
       state.totalPrice = 0;
       state.shippingFee = 2;
-    }
+    },
   },
 });
-
-export const setSelectedItems = (state) =>
-  state.products.reduce((total, product) => total + product.quantity, 0);
-
-export const setTotalPrice = (state) =>
-  state.products.reduce((total, product) => total + (product.quantity * product.price), 0);
 
 export const { addToCart, updateQuantity, removeFromCart, clearCart } = cartSlice.actions;
 export default cartSlice.reducer;
