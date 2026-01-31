@@ -98,6 +98,19 @@ ${viewOrder.products?.map((p) => `- ${p.name} (${p.quantity}x ${(p.price || 0).t
     const fee = Number(order.shippingFee);
     return isNaN(fee) ? 0 : fee;
   };
+const isPriceAdjusted = (order) => {
+  if (!order || !Array.isArray(order.products)) return false;
+
+  const productsTotal = order.products.reduce(
+    (sum, p) => sum + Number(p.price || 0) * Number(p.quantity || 0),
+    0
+  );
+
+  const shipping = getShippingFee(order);
+  const expectedTotal = productsTotal + shipping;
+
+  return Math.abs(Number(order.amount) - expectedTotal) > 0.001;
+};
 
   // حساب نطاق التاريخ حسب الفلتر
   const computeRange = () => {
@@ -275,16 +288,25 @@ ${viewOrder.products?.map((p) => `- ${p.name} (${p.quantity}x ${(p.price || 0).t
                   {items.map((order, index) => (
                     <tr key={order._id || index} className={index % 2 === 0 ? 'bg-gray-50' : ''}>
                       <td className="py-3 px-2 md:px-4 border-b">{order?.orderId || '--'}</td>
-                      <td className="py-3 px-2 md:px-4 border-b">
-                        {order?.wilayat === 'محل' ? (
-                          <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm inline-flex items-center gap-1">
-                            <FaStore className="text-green-600" />
-                            محل
-                          </span>
-                        ) : (
-                          order?.customerName || order?.email || 'غير محدد'
-                        )}
-                      </td>
+<td className="py-3 px-2 md:px-4 border-b">
+  <div className="flex flex-col gap-1">
+    {order?.wilayat === 'محل' ? (
+      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-sm inline-flex items-center gap-1 w-fit">
+        <FaStore className="text-green-600" />
+        محل
+      </span>
+    ) : (
+      <span>{order?.customerName || order?.email || 'غير محدد'}</span>
+    )}
+
+    {isPriceAdjusted(order) && (
+      <span className="text-xs text-orange-600 font-semibold">
+        تم تغيير السعر
+      </span>
+    )}
+  </div>
+</td>
+
                       <td className="py-3 px-2 md:px-4 border-b">{formatDate(order?.updatedAt || order?.createdAt)}</td>
                       <td className="py-3 px-2 md:px-4 border-b">
                         <div className="flex flex-wrap gap-2 justify-end">

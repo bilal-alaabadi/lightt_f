@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { getBaseUrl } from '../../utils/baseURL';
 import { useNavigate } from 'react-router-dom';
@@ -15,6 +15,9 @@ const Checkout = () => {
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ✅ خصم فقط (لا زيادة)
+  const [discount, setDiscount] = useState(0);
+
   const { products, totalPrice } = useSelector((state) => state.cart);
   const { user } = useSelector((state) => state.auth);
 
@@ -25,15 +28,65 @@ const Checkout = () => {
   const BASE_SHIPPING_FEE = 2;
   const shippingFee = isPrivileged ? 0 : BASE_SHIPPING_FEE;
 
+  const subtotalWithShipping = useMemo(() => {
+    return Number(totalPrice) + Number(shippingFee);
+  }, [totalPrice, shippingFee]);
+
+  // ✅ تنظيف/حماية الخصم: 0 .. subtotalWithShipping
+  const safeDiscount = useMemo(() => {
+    const n = Number(discount || 0);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return Math.min(n, Math.max(0, subtotalWithShipping));
+  }, [discount, subtotalWithShipping]);
+
+  // ✅ الإجمالي بعد الخصم
+  const finalTotal = useMemo(() => {
+    const total = subtotalWithShipping - safeDiscount;
+    return total > 0 ? total : 0;
+  }, [subtotalWithShipping, safeDiscount]);
+
   useEffect(() => {
     if (isPrivileged) {
       setWilayat('محل');
     }
   }, [isPrivileged]);
 
+  // ✅ إذا تغير الإجمالي الأساسي، تأكد ما يصير الخصم أكبر منه
+  useEffect(() => {
+    setDiscount((prev) => {
+      const n = Number(prev || 0);
+      if (!Number.isFinite(n) || n <= 0) return 0;
+      return Math.min(n, Math.max(0, subtotalWithShipping));
+    });
+  }, [subtotalWithShipping]);
+
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, '');
     setCustomerPhone(value);
+  };
+
+  const handleDiscountChange = (e) => {
+    const raw = e.target.value;
+
+    // يسمح بالفراغ أثناء الكتابة
+    if (raw === '') {
+      setDiscount('');
+      return;
+    }
+
+    const n = Number(raw);
+
+    // إذا دخل شيء غير رقم تجاهله
+    if (!Number.isFinite(n)) return;
+
+    // منع السالب (لا زيادة سعر)
+    if (n < 0) {
+      setDiscount(0);
+      return;
+    }
+
+    // منع خصم أكبر من الإجمالي قبل الخصم
+    setDiscount(Math.min(n, Math.max(0, subtotalWithShipping)));
   };
 
   const createOrder = async (e) => {
@@ -68,18 +121,7 @@ const Checkout = () => {
             tailoring: {
               mode: product.tailoring?.mode || 'without',
               fee: Number(product.tailoring?.fee || 0),
-              measurements: product.tailoring?.measurements
-                ? {
-                    length: Number(product.tailoring.measurements.length || 0),
-                    upperWidth: Number(product.tailoring.measurements.upperWidth || 0),
-                    lowerWidthFromTop: Number(product.tailoring.measurements.lowerWidthFromTop || 0),
-                    neck: Number(product.tailoring.measurements.neck || 0),
-                    sleeveLength: Number(product.tailoring.measurements.sleeveLength || 0),
-                    sleeveWidth: Number(product.tailoring.measurements.sleeveWidth || 0),
-                    lastBottomWidth: Number(product.tailoring.measurements.lastBottomWidth || 0),
-                    shoulder: Number(product.tailoring.measurements.shoulder || 0),
-                  }
-                : null,
+              measurements: product.tailoring?.measurements || null,
             },
           }),
         })),
@@ -88,8 +130,9 @@ const Checkout = () => {
         wilayat,
         email: user?.email || 'no-email-provided@example.com',
         notes,
-        amount: Number(totalPrice) + Number(shippingFee),
+        amount: Number(finalTotal), // ✅ المبلغ بعد الخصم
         shippingFee,
+        discount: Number(safeDiscount), // ✅ حفظ الخصم (اختياري للباك-إند)
         isAdmin: isPrivileged,
       };
 
@@ -114,10 +157,10 @@ const Checkout = () => {
           customerPhone,
           wilayat,
           totalAmount: orderData.amount,
+          discount: orderData.discount,
         },
       });
     } catch (err) {
-      console.error('Error:', err);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
@@ -242,59 +285,29 @@ const Checkout = () => {
                     {product.name} × {product.quantity}
                   </span>
 
-                  {product.selectedSize && (
-                    <p className="text-sm text-gray-500 mt-1">الحجم: {product.selectedSize}</p>
-                  )}
+                  {/* ✅ إظهار قياسات الأقمشة إذا كان تفصيل */}
+                  {product.tailoring?.mode === 'detail' && product.tailoring?.measurements && (
+                    <div className="mt-2 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-md p-2">
+                      <div className="font-semibold text-gray-700 mb-1">قياسات التفصيل:</div>
 
-                  {product.selectedColor && (
-                    <p className="text-sm text-gray-500 mt-1">اللون: {product.selectedColor}</p>
-                  )}
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                        <div>الطول: <span className="font-medium">{product.tailoring.measurements.length}</span></div>
+                        <div>العرض الأعلى: <span className="font-medium">{product.tailoring.measurements.upperWidth}</span></div>
 
-                  {product.tailoring?.mode && (
-                    <div className="mt-2 bg-amber-50 border border-amber-200 rounded-md p-2">
-                      <p className="text-sm text-gray-700">
-                        <span className="font-semibold">التفصيل:</span>{' '}
-                        {product.tailoring.mode === 'detail' ? 'تفصيل' : 'بدون تفصيل'}
-                      </p>
+                        <div>العرض الأسفل من الأعلى: <span className="font-medium">{product.tailoring.measurements.lowerWidthFromTop}</span></div>
+                        <div>الرقبة: <span className="font-medium">{product.tailoring.measurements.neck}</span></div>
 
-                      {product.tailoring.mode === 'detail' && (
-                        <>
-                          <p className="text-sm text-gray-700 mt-1">
-                            <span className="font-semibold">رسوم التفصيل:</span>{' '}
-                            {Number(product.tailoring.fee || 0).toFixed(2)} ر.ع
-                          </p>
+                        <div>طول الردون: <span className="font-medium">{product.tailoring.measurements.sleeveLength}</span></div>
+                        <div>عرض الردون: <span className="font-medium">{product.tailoring.measurements.sleeveWidth}</span></div>
 
-                          {product.tailoring.measurements && (
-                            <div className="mt-2 text-sm text-gray-700 space-y-1">
-                              <p>
-                                <span className="font-semibold">الطول:</span> {product.tailoring.measurements.length}
-                              </p>
-                              <p>
-                                <span className="font-semibold">العرض الأعلى:</span> {product.tailoring.measurements.upperWidth}
-                              </p>
-                              <p>
-                                <span className="font-semibold">العرض الأسفل من الأعلى:</span>{' '}
-                                {product.tailoring.measurements.lowerWidthFromTop}
-                              </p>
-                              <p>
-                                <span className="font-semibold">قياس الرقبة:</span> {product.tailoring.measurements.neck}
-                              </p>
-                              <p>
-                                <span className="font-semibold">طول الردون:</span> {product.tailoring.measurements.sleeveLength}
-                              </p>
-                              <p>
-                                <span className="font-semibold">عرض الردون:</span> {product.tailoring.measurements.sleeveWidth}
-                              </p>
-                              <p>
-                                <span className="font-semibold">قياس العرض السفلي الأخير:</span>{' '}
-                                {product.tailoring.measurements.lastBottomWidth}
-                              </p>
-                              <p>
-                                <span className="font-semibold">قياس الكتف:</span> {product.tailoring.measurements.shoulder}
-                              </p>
-                            </div>
-                          )}
-                        </>
+                        <div>العرض السفلي الأخير: <span className="font-medium">{product.tailoring.measurements.lastBottomWidth}</span></div>
+                        <div>الكتف: <span className="font-medium">{product.tailoring.measurements.shoulder}</span></div>
+                      </div>
+
+                      {Number(product.tailoring?.fee || 0) > 0 && (
+                        <div className="mt-2 text-gray-700">
+                          رسوم التفصيل: <span className="font-semibold">{Number(product.tailoring.fee).toFixed(2)}</span> ر.ع
+                        </div>
                       )}
                     </div>
                   )}
@@ -312,10 +325,26 @@ const Checkout = () => {
             <p className="text-gray-900">{Number(shippingFee).toFixed(2)} ر.ع</p>
           </div>
 
+          {/* ✅ خصم فقط */}
+          {isPrivileged && (
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+              <span className="text-gray-800">خصم</span>
+              <input
+                type="number"
+                className="w-24 p-1 border rounded-md text-right"
+                value={discount}
+                onChange={handleDiscountChange}
+                placeholder="0"
+                min="0"
+                max={subtotalWithShipping}
+              />
+            </div>
+          )}
+
           <div className="flex justify-between items-center pt-4 border-t border-gray-200">
             <span className="text-gray-800 font-semibold">الإجمالي</span>
             <p className="text-gray-900 font-bold">
-              {(Number(totalPrice) + Number(shippingFee)).toFixed(2)} ر.ع
+              {finalTotal.toFixed(2)} ر.ع
             </p>
           </div>
         </div>

@@ -25,12 +25,6 @@ const normalizeArabic = (s) =>
     .replace(/ة/g, 'ه')
     .replace(/ى/g, 'ي');
 
-const isGhutra = (product) => {
-  const cat = normalizeArabic(product?.category);
-  const name = normalizeArabic(product?.name);
-  return cat.includes('غتر') || name.includes('غتر');
-};
-
 const SingleProduct = () => {
   const { id } = useParams();
   const dispatch = useDispatch();
@@ -48,12 +42,12 @@ const SingleProduct = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const isFabricProduct = singleProduct?.category === 'أقمشة';
-const isShoeProduct = useMemo(() => {
-  const cat = normalizeArabic(singleProduct?.category);
-  const name = normalizeArabic(singleProduct?.name);
-  return cat.includes('احذ') || name.includes('حذاء') || name.includes('احذ');
-}, [singleProduct?.category, singleProduct?.name]);
-  const isGhutraProduct = useMemo(() => isGhutra(singleProduct), [singleProduct]);
+
+  const isShoeProduct = useMemo(() => {
+    const cat = normalizeArabic(singleProduct?.category);
+    const name = normalizeArabic(singleProduct?.name);
+    return cat.includes('احذ') || name.includes('حذاء') || name.includes('احذ');
+  }, [singleProduct?.category, singleProduct?.name]);
 
   const [tailoringMode, setTailoringMode] = useState('without'); // 'detail' | 'without'
 
@@ -109,30 +103,11 @@ const isShoeProduct = useMemo(() => {
     return 1;
   }, [selectedQty, maxAddableQty]);
 
-  const bulkDiscountThreshold = 3;
-  const bulkDiscountPercent = 20;
-  const bulkDiscountRate = 0.2;
-
-  const ghutraQtyInCart = useMemo(() => {
-    return (cartItems || [])
-      .filter((p) => isGhutra(p))
-      .reduce((sum, p) => sum + Number(p.quantity || 0), 0);
-  }, [cartItems]);
-
-  const ghutraQtyAfterAdd = useMemo(() => {
-    if (!isGhutraProduct) return ghutraQtyInCart;
-    return ghutraQtyInCart + safeSelectedQty;
-  }, [ghutraQtyInCart, isGhutraProduct, safeSelectedQty]);
-
-  const isBulkDiscountEligible = useMemo(() => {
-    return isGhutraProduct && ghutraQtyAfterAdd >= bulkDiscountThreshold;
-  }, [isGhutraProduct, ghutraQtyAfterAdd]);
-
+  // ✅ إلغاء خصم الغتر: السعر الإجمالي = السعر النهائي × الكمية (بدون أي خصم bulk)
   const displayedTotalPrice = useMemo(() => {
     const total = finalPrice * safeSelectedQty;
-    if (isBulkDiscountEligible) return +(total * (1 - bulkDiscountRate)).toFixed(3);
     return +total.toFixed(3);
-  }, [finalPrice, safeSelectedQty, isBulkDiscountEligible]);
+  }, [finalPrice, safeSelectedQty]);
 
   const displayedTotalOldPrice = useMemo(() => {
     if (!finalOldPrice || finalOldPrice <= 0) return 0;
@@ -481,20 +456,6 @@ const isShoeProduct = useMemo(() => {
                     {discountPercent !== null && (
                       <div className="text-green-600 font-medium mt-1">وفر {discountPercent}%</div>
                     )}
-
-                    {isGhutraProduct && ghutraQtyAfterAdd >= bulkDiscountThreshold && (
-                      <div className="text-green-700 font-bold mt-1">
-                        حصلت على خصم {bulkDiscountPercent}% ✅
-                      </div>
-                    )}
-
-                    {isGhutraProduct && ghutraQtyAfterAdd < bulkDiscountThreshold && (
-                      <div className="text-gray-700 font-medium mt-1">
-                        {ghutraQtyAfterAdd === 2
-                          ? `أضف واحدة حتى تحصل على خصم ${bulkDiscountPercent}%`
-                          : `احصل على 3 حتى تحصل على خصم ${bulkDiscountPercent}%`}
-                      </div>
-                    )}
                   </div>
 
                   {isFabricProduct && isUser && tailoringMode === 'detail' && (
@@ -535,19 +496,18 @@ const isShoeProduct = useMemo(() => {
                     >
                       {singleProduct.quantity <= 0 ? 'نفذت الكمية' : `${singleProduct.quantity} قطع متبقية`}
                     </p>
-                                        {isShoeProduct && (
+
+                    {isShoeProduct && (
                       <p className="mt-2 text-sm text-gray-700">
                         يتوفر قياسات من <span className="font-semibold">(40 إلى 45)</span>
                       </p>
                     )}
                   </div>
-                  
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      
                       <button
                         type="button"
                         onClick={() => setSelectedQty((q) => Math.max(1, Number(q || 1) - 1))}
@@ -575,8 +535,6 @@ const isShoeProduct = useMemo(() => {
                         +
                       </button>
                     </div>
-
-
                   </div>
 
                   <button
